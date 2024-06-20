@@ -1,4 +1,4 @@
-﻿// MarchingCubes.h
+// DistanceFields.h
 #pragma once
 
 #include <iostream>
@@ -6,7 +6,6 @@
 #include <array>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <cmath>
-
-std::vector<std::vector<std::vector<float>>> scalarField;

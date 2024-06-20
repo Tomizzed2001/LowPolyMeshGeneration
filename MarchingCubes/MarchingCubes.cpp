@@ -1,5 +1,4 @@
 ﻿// MarchingCubes.cpp : Defines the entry point for the application.
-//
 
 #include "MarchingCubes.h"
 #include "mc_tables.h"
@@ -112,19 +111,4 @@ int main(int argc, char** argv)
 	out.close();
 
 	return 0;
-}
-
-int getCubeState(int x, int y, int z){
-	int caseNum = 0;
-
-	for(int i = 0; i < 8; i++){
-		//cout << scalarField[x+vertPos[i][0]][y+vertPos[i][1]][z+vertPos[i][2]] << endl;
-		if (scalarField[x+vertPos[i][0]][y+vertPos[i][1]][z+vertPos[i][2]] < 0) {
-			caseNum += pow(2, i);
-		}
-	}
-
-	cout << "Case:" << caseNum << endl;
-
-	return caseNum;
 }
