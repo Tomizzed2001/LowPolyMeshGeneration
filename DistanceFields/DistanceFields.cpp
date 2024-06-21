@@ -4,14 +4,24 @@
 
 using namespace std;
 
+#define GRID_SIZE 0.5
+
 int main(int argc, char** argv)
 {
+    //Check the file is a .obj file
+    std::string s = argv[1];
+    if (!s.find(".obj")){
+        std::cout << "Program only takes input of a .obj file" << std::endl;
+        return 0;
+    }
+
     vector<vector<float>> vertices;
     int numVertices = -1;
     vector<vector<float>> normals;
     int numNormals = -1;
     vector<vector<int>> faces;
     int numFaces = -1;
+    float minPoint[3] = {0}, maxPoint[3] = {0};
 
 	// Read in the .obj file
 	ifstream dField(argv[1]);
@@ -22,6 +32,7 @@ int main(int argc, char** argv)
         string ss;
         string vtn;
         float point;
+
         // Loop through .obj file line by line
         while (getline(dField, newLine)) {
             stringstream line(newLine);
@@ -35,7 +46,7 @@ int main(int argc, char** argv)
                     line >> point;
                     normals[numNormals].push_back(point);
                 }
-                cout << "Normal: " << normals[numNormals][0] << ", " << normals[numNormals][1] << ", " << normals[numNormals][2] << endl;
+                //cout << "Normal: " << normals[numNormals][0] << ", " << normals[numNormals][1] << ", " << normals[numNormals][2] << endl;
             }
             // If vertex
             else if(ss == "v"){
@@ -45,8 +56,15 @@ int main(int argc, char** argv)
                 for(int i = 0; i < 3; i++){
                     line >> point;
                     vertices[numVertices].push_back(point);
+                    // Check if its a minimum or maximum
+                    if(point < minPoint[i]){
+                        minPoint[i] = point;
+                    }
+                    else if(point > maxPoint[i]){
+                        maxPoint[i] = point;
+                    }
                 }
-                cout << "Vertex: " << vertices[numVertices][0] << ", " << vertices[numVertices][1] << ", " << vertices[numVertices][2] << endl;
+                //cout << "Vertex: " << vertices[numVertices][0] << ", " << vertices[numVertices][1] << ", " << vertices[numVertices][2] << endl;
             }
             // If face
             else if(ss == "f"){
@@ -65,13 +83,51 @@ int main(int argc, char** argv)
                     getline(ssFace, vtn, '/');
                     faces[numFaces].push_back(stoi(vtn));
                 }
-                cout << "Face: " << faces[numFaces][0] << ", " << faces[numFaces][2] << ", " << faces[numFaces][4] << endl;
+                //cout << "Face: " << faces[numFaces][0] << ", " << faces[numFaces][2] << ", " << faces[numFaces][4] << endl;
             }
         }
     }
     dField.close();
 
+    
+    //Round the points so the grid fits nicely
+    cout << "Min Point: " << minPoint[0] << ", " << minPoint[1] << ", " << minPoint[2] << endl;
+    cout << "Max Point: " << maxPoint[0] << ", " << maxPoint[1] << ", " << maxPoint[2] << endl;
+    fitToGrid(minPoint, true);
+    fitToGrid(maxPoint, false);
+    cout << "Min Point: " << minPoint[0] << ", " << minPoint[1] << ", " << minPoint[2] << endl;
+    cout << "Max Point: " << maxPoint[0] << ", " << maxPoint[1] << ", " << maxPoint[2] << endl;
+
     // Set up the scalar field
+    int xSize = ((maxPoint[0] - minPoint[0]) / GRID_SIZE) + 1;
+    int ySize = ((maxPoint[1] - minPoint[1]) / GRID_SIZE) + 1;
+    int zSize = ((maxPoint[2] - minPoint[2]) / GRID_SIZE) + 1;
+    std::vector<std::vector<std::vector<float>>> scalarField(xSize, vector<vector<float>>(ySize, vector<float>(zSize)));
+
+    // Loop through all points in the scalar field and get the distance 
+    // from them to the closest triangle
+    for (float xID = 0, x = minPoint[0]; xID < xSize; xID++, x+=GRID_SIZE) {
+		for (float yID = 0, y = minPoint[1]; yID < ySize; yID++, y+=GRID_SIZE) {
+			for (float zID = 0, z = minPoint[2]; zID < zSize; zID++, z+=GRID_SIZE) {
+                
+            }
+        }
+    }
     
 	return 0;
+}
+
+void fitToGrid(float *point, bool isMin){
+    if(isMin){
+        point[0] = -(abs(point[0]) + (GRID_SIZE - fmod(abs(point[0]), GRID_SIZE))) - GRID_SIZE;
+        point[1] = -(abs(point[1]) + (GRID_SIZE - fmod(abs(point[1]), GRID_SIZE))) - GRID_SIZE;
+        point[2] = -(abs(point[2]) + (GRID_SIZE - fmod(abs(point[2]), GRID_SIZE))) - GRID_SIZE;  
+        return;
+    }
+    else{
+        point[0] = point[0] + (GRID_SIZE - fmod(point[0], GRID_SIZE)) + GRID_SIZE;
+        point[1] = point[1] + (GRID_SIZE - fmod(point[1], GRID_SIZE)) + GRID_SIZE;
+        point[2] = point[2] + (GRID_SIZE - fmod(point[2], GRID_SIZE)) + GRID_SIZE;  
+        return;
+    }
 }

@@ -9,3 +9,5 @@
 #include <sstream>
 #include <string>
 #include <cmath>
+
+void fitToGrid(float *point, bool isMin);
