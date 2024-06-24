@@ -17,12 +17,9 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    vector<vector<float>> vertices;
-    int numVertices = -1;
-    vector<vector<float>> normals;
-    int numNormals = -1;
-    vector<vector<int>> faces;
-    int numFaces = -1;
+    vector<glm::vec3> vertices;
+    vector<glm::vec3> normals;
+    vector<glm::vec3> faces;
     float minPoint[3] = {0}, maxPoint[3] = {0};
 
 	// Read in the .obj file
@@ -33,7 +30,6 @@ int main(int argc, char** argv)
         string newLine;
         string ss;
         string vtn;
-        float point;
 
         // Loop through .obj file line by line
         while (getline(dField, newLine)) {
@@ -41,56 +37,48 @@ int main(int argc, char** argv)
             line >> ss;
             // If vertex normal
             if(ss == "vn"){
-                normals.push_back(vector<float>());
-                numNormals++;
-                // Format is x y z as a direction
-                for(int i = 0; i < 3; i++){
-                    line >> point;
-                    normals[numNormals].push_back(point);
-                }
-                //cout << "Normal: " << normals[numNormals][0] << ", " << normals[numNormals][1] << ", " << normals[numNormals][2] << endl;
+                glm::vec3 n;
+                line >> n.x >> n.y >> n.z;
+                normals.push_back(n);
             }
             // If vertex
             else if(ss == "v"){
-                vertices.push_back(vector<float>());
-                numVertices++;
+                glm::vec3 p;
                 // Format is x y z as a point
                 for(int i = 0; i < 3; i++){
-                    line >> point;
-                    vertices[numVertices].push_back(point);
+                    line >> p[i];
                     // Check if its a minimum or maximum
-                    if(point < minPoint[i]){
-                        minPoint[i] = point;
+                    if(p[i] < minPoint[i]){
+                        minPoint[i] = p[i];
                     }
-                    else if(point > maxPoint[i]){
-                        maxPoint[i] = point;
+                    else if(p[i] > maxPoint[i]){
+                        maxPoint[i] = p[i];
                     }
                 }
-                //cout << "Vertex: " << vertices[numVertices][0] << ", " << vertices[numVertices][1] << ", " << vertices[numVertices][2] << endl;
+                vertices.push_back(p);
             }
+            
             // If face
             else if(ss == "f"){
-                faces.push_back(vector<int>());
-                numFaces++;
+                glm::vec3 f;
                 // Format is v/vt/vn so split these into the face vector as v1,n1,v2,n2,v3,n3
                 for(int i = 0; i < 3; i++){
                     line >> vtn;
                     stringstream ssFace(vtn);
                     // Get Vertex
                     getline(ssFace, vtn, '/');
-                    faces[numFaces].push_back(stoi(vtn));
+                    f[i] = stoi(vtn) - 1;
                     // Ignore the texture coords
                     getline(ssFace, vtn, '/');
                     // Get Normal
                     getline(ssFace, vtn, '/');
-                    faces[numFaces].push_back(stoi(vtn));
                 }
-                //cout << "Face: " << faces[numFaces][0] << ", " << faces[numFaces][2] << ", " << faces[numFaces][4] << endl;
+                faces.push_back(f);
+                //cout << "Face: " << glm::to_string(faces[11]) << endl;
             }
         }
     }
     dField.close();
-
     
     //Round the points so the grid fits nicely
     cout << "Min Point: " << minPoint[0] << ", " << minPoint[1] << ", " << minPoint[2] << endl;
@@ -109,10 +97,9 @@ int main(int argc, char** argv)
     // Get the transform matrices for each triangle
     vector<glm::mat4> transforms;
     for(size_t faceID = 0; faceID < faces.size(); faceID++){
-
+        cout << glm::to_string(faces[faceID]) << endl;
+        transforms.push_back(getTransformMatrix(vertices[faces[faceID].x], vertices[faces[faceID].y], vertices[faces[faceID].z]));
     }
-
-
 
     // Loop through all points in the scalar field and get the distance 
     // from them to the closest triangle
@@ -124,19 +111,24 @@ int main(int argc, char** argv)
         }
     }
 
-    glm::vec3 A = glm::vec3(3,1,-4);
-    glm::vec3 B = glm::vec3(6,1,0);
-    glm::vec3 C = glm::vec3(4,5,6);
+    // Testing stuff (It seems that it flips the distance so - is on the outside? Requires further testing to be
+    // sure but test with real distance and can do the paper calculations too).
+    glm::vec3 A = vertices[1];
+    glm::vec3 B = vertices[7];
+    glm::vec3 C = vertices[5];
+    glm::vec3 N = glm::cross(glm::normalize(B-A), glm::normalize(C-A));
 
     glm::mat4 R = getTransformMatrix(A, B, C);
 
     A = R * glm::vec4(A,1);
     B = R * glm::vec4(B,1);
     C = R * glm::vec4(C,1);
+    N = R * glm::vec4(N,1);
 
     cout << "A: " << A.x << ", " << A.y << ", " << A.z << endl;
     cout << "B: " << B.x << ", " << B.y << ", " << B.z << endl;
     cout << "C: " << C.x << ", " << C.y << ", " << C.z << endl;
+    cout << "N: " << N.x << ", " << N.y << ", " << N.z << endl;
     
 	return 0;
 }
