@@ -2,6 +2,8 @@
 
 #include "DistanceFields.h"
 
+#include <glm/gtx/string_cast.hpp>
+
 using namespace std;
 
 #define GRID_SIZE 0.5
@@ -104,6 +106,14 @@ int main(int argc, char** argv)
     int zSize = ((maxPoint[2] - minPoint[2]) / GRID_SIZE) + 1;
     std::vector<std::vector<std::vector<float>>> scalarField(xSize, vector<vector<float>>(ySize, vector<float>(zSize)));
 
+    // Get the transform matrices for each triangle
+    vector<glm::mat4> transforms;
+    for(size_t faceID = 0; faceID < faces.size(); faceID++){
+
+    }
+
+
+
     // Loop through all points in the scalar field and get the distance 
     // from them to the closest triangle
     for (float xID = 0, x = minPoint[0]; xID < xSize; xID++, x+=GRID_SIZE) {
@@ -113,6 +123,20 @@ int main(int argc, char** argv)
             }
         }
     }
+
+    glm::vec3 A = glm::vec3(3,1,-4);
+    glm::vec3 B = glm::vec3(6,1,0);
+    glm::vec3 C = glm::vec3(4,5,6);
+
+    glm::mat4 R = getTransformMatrix(A, B, C);
+
+    A = R * glm::vec4(A,1);
+    B = R * glm::vec4(B,1);
+    C = R * glm::vec4(C,1);
+
+    cout << "A: " << A.x << ", " << A.y << ", " << A.z << endl;
+    cout << "B: " << B.x << ", " << B.y << ", " << B.z << endl;
+    cout << "C: " << C.x << ", " << C.y << ", " << C.z << endl;
     
 	return 0;
 }
@@ -130,4 +154,23 @@ void fitToGrid(float *point, bool isMin){
         point[2] = point[2] + (GRID_SIZE - fmod(point[2], GRID_SIZE)) + GRID_SIZE;  
         return;
     }
+}
+
+glm::mat4 getTransformMatrix(glm::vec3 A, glm::vec3 B, glm::vec3 C){
+    glm::vec4 translate = glm::vec4(-A, 1);
+
+    glm::vec3 U = glm::normalize(B - A);
+    glm::vec3 W = glm::normalize(glm::cross(U, C - A));
+    glm::vec3 V = glm::cross(U,W);
+
+    glm::mat3 RotMatrix = glm::transpose(glm::mat3(W,V,U));
+
+    glm::mat4 R = glm::mat4(RotMatrix);
+    R[3][3] = 1;
+
+    glm::mat4 T = glm::mat4(1.f);
+    T[3] = translate;
+
+    return R * T;
+
 }

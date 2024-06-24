@@ -2,10 +2,10 @@ CC = g++
 OBJ = DistanceFields.o
 CFLAGS = -c -Wall -Iinclude
 
-MarchingCubes: $(OBJ)
+DistanceFields: $(OBJ)
 	$(CC)  $(OBJ) -o DistanceFields
 
-MarchingCubes.o: DistanceFields.cpp DistanceFields.h
+DistanceFields.o: DistanceFields.cpp DistanceFields.h
 	$(CC) $(CFLAGS) DistanceFields.cpp
 
 clean:
