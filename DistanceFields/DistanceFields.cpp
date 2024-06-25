@@ -17,9 +17,9 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    vector<glm::vec3> vertices;
-    vector<glm::vec3> normals;
-    vector<glm::vec3> faces;
+    vector<glm::vec3> vertices; // x y z
+    vector<glm::vec3> normals;  // x y z directions
+    vector<glm::vec3> faces;    // vert vert vert
     float minPoint[3] = {0}, maxPoint[3] = {0};
 
 	// Read in the .obj file
@@ -95,10 +95,10 @@ int main(int argc, char** argv)
     std::vector<std::vector<std::vector<float>>> scalarField(xSize, vector<vector<float>>(ySize, vector<float>(zSize)));
 
     // Get the transform matrices for each triangle
-    vector<glm::mat4> transforms;
+    transformedFaces.resize(faces.size()+1, vector<glm::vec2>(6));
     for(size_t faceID = 0; faceID < faces.size(); faceID++){
-        cout << glm::to_string(faces[faceID]) << endl;
         transforms.push_back(getTransformMatrix(vertices[faces[faceID].x], vertices[faces[faceID].y], vertices[faces[faceID].z]));
+        preComputeFace(faceID, transforms.back(), vertices[faces[faceID].x], vertices[faces[faceID].y], vertices[faces[faceID].z]);
     }
 
     // Loop through all points in the scalar field and get the distance 
@@ -106,29 +106,39 @@ int main(int argc, char** argv)
     for (float xID = 0, x = minPoint[0]; xID < xSize; xID++, x+=GRID_SIZE) {
 		for (float yID = 0, y = minPoint[1]; yID < ySize; yID++, y+=GRID_SIZE) {
 			for (float zID = 0, z = minPoint[2]; zID < zSize; zID++, z+=GRID_SIZE) {
-                
+                float closestDistance = 1000;
+                for(size_t faceID = 0; faceID < faces.size(); faceID++){
+                    /*
+                    float distance = distToTriangle(
+                        transform,
+                        glm::vec3(x,y,z),
+                        vertices[faces[faceID].x],
+                        vertices[faces[faceID].y], 
+                        vertices[faces[faceID].z]
+                    );
+                    if(abs(distance) < closestDistance){
+                        closestDistance = distance;
+                    }
+                    */
+                }
+                scalarField[xID][yID][zID] = closestDistance;
             }
         }
     }
 
+    // Dump the scalar field to a .txt file
+
     // Testing stuff (It seems that it flips the distance so - is on the outside? Requires further testing to be
     // sure but test with real distance and can do the paper calculations too).
-    glm::vec3 A = vertices[1];
-    glm::vec3 B = vertices[7];
-    glm::vec3 C = vertices[5];
-    glm::vec3 N = glm::cross(glm::normalize(B-A), glm::normalize(C-A));
+    glm::mat4 T = glm::mat4(1);
+    transforms[0] = T;
+    glm::vec3 A = glm::vec3(0,0,0);
+    glm::vec3 B = glm::vec3(0,0,3);
+    glm::vec3 C = glm::vec3(0,3,0);
+    glm::vec3 P = glm::vec3(5,1,1);
 
-    glm::mat4 R = getTransformMatrix(A, B, C);
-
-    A = R * glm::vec4(A,1);
-    B = R * glm::vec4(B,1);
-    C = R * glm::vec4(C,1);
-    N = R * glm::vec4(N,1);
-
-    cout << "A: " << A.x << ", " << A.y << ", " << A.z << endl;
-    cout << "B: " << B.x << ", " << B.y << ", " << B.z << endl;
-    cout << "C: " << C.x << ", " << C.y << ", " << C.z << endl;
-    cout << "N: " << N.x << ", " << N.y << ", " << N.z << endl;
+    preComputeFace(0, T, A, B, C);
+    cout << distToTriangle(0, P) << endl;
     
 	return 0;
 }
@@ -165,4 +175,46 @@ glm::mat4 getTransformMatrix(glm::vec3 A, glm::vec3 B, glm::vec3 C){
 
     return R * T;
 
+}
+
+void preComputeFace(int faceID, glm::mat4 transform, glm::vec3 A, glm::vec3 B, glm::vec3 C){
+    // Transform the original points for 0 - 2
+    glm::vec4 tA = transform * glm::vec4(A,1);
+    transformedFaces[faceID][0] = glm::vec2(tA.z, tA.y);
+    glm::vec4 tB = transform * glm::vec4(B,1);
+    transformedFaces[faceID][1] = glm::vec2(tB.z, tB.y);
+    glm::vec4 tC = transform * glm::vec4(C,1);
+    transformedFaces[faceID][2] = glm::vec2(tC.z, tC.y);
+
+    // Get the normals
+    glm::vec2 AB = transformedFaces[faceID][1] - transformedFaces[faceID][0];
+    transformedFaces[faceID][3] = glm::vec2(AB.y, -AB.x);
+    glm::vec2 BC = transformedFaces[faceID][2] - transformedFaces[faceID][1];
+    transformedFaces[faceID][4] = glm::vec2(BC.y, -BC.x);
+    glm::vec2 CA = transformedFaces[faceID][0] - transformedFaces[faceID][2];
+    transformedFaces[faceID][5] = glm::vec2(CA.y, -CA.x);
+}
+
+float distToTriangle(int faceID, glm::vec3 P){
+    // Transform P into 2D plane of triangle
+    P = transforms[faceID] * glm::vec4(P,1);
+    glm::vec2 tP = glm::vec2(P.z, P.y);
+    glm::vec2 tA = transformedFaces[faceID][0];
+    glm::vec2 tB = transformedFaces[faceID][1];
+    glm::vec2 tC = transformedFaces[faceID][2];
+
+    // Determine if point is within the bounds of the triangle using the half plane test
+    float AB = (tB.y - tA.y) * tP.x + (tA.x - tB.x) * tP.y + (tB.x * tA.y - tA.x * tB.y);
+    float BC = (tC.y - tB.y) * tP.x + (tB.x - tC.x) * tP.y + (tC.x * tB.y - tB.x * tC.y);
+    float CA = (tA.y - tC.y) * tP.x + (tC.x - tA.x) * tP.y + (tA.x * tC.y - tC.x * tA.y);
+    if(AB <= 0 && BC <= 0 && CA <= 0){
+        return P.x;
+    }
+
+    // Point must be outside the triangle so check to see if there is a closest vertex
+    // Add the normals onto the required points and do more 2D tests oyeah
+
+
+    return 0;
+    
 }
