@@ -48,7 +48,7 @@ int main(int argc, char** argv)
 				int caseNum = 0;
 				for(int i = 0; i < 8; i++){
 					// Check if inside the mesh
-					if (scalarField[x+vertPos[i][0]][y+vertPos[i][1]][z+vertPos[i][2]] < ISOVALUE) {
+					if (scalarField[x+vertPos[i][0]][y+vertPos[i][1]][z+vertPos[i][2]] <= ISOVALUE) {
 						caseNum += pow(2, i);
 					}
 				}
