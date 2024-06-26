@@ -20,6 +20,6 @@ glm::mat4 getTransformMatrix(glm::vec3 A, glm::vec3 B, glm::vec3 C);
 
 void preComputeFace(int faceID, glm::mat4 transform, glm::vec3 A, glm::vec3 B, glm::vec3 C);
 
-float distToTriangle(int faceID, glm::vec3 P);
+float distToTriangle(int faceID, glm::vec3 P, glm::vec3 A, glm::vec3 B, glm::vec3 C);
 
 

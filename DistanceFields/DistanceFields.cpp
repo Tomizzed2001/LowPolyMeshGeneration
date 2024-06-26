@@ -110,35 +110,56 @@ int main(int argc, char** argv)
                 for(size_t faceID = 0; faceID < faces.size(); faceID++){
                     /*
                     float distance = distToTriangle(
-                        transform,
+                        faceID,
                         glm::vec3(x,y,z),
                         vertices[faces[faceID].x],
                         vertices[faces[faceID].y], 
                         vertices[faces[faceID].z]
                     );
-                    if(abs(distance) < closestDistance){
+                    if(abs(distance) < abs(closestDistance)){
                         closestDistance = distance;
                     }
                     */
                 }
-                scalarField[xID][yID][zID] = closestDistance;
+                //cout << "New Point: " << x << ", " << y << ", " << z << " Dist: " << closestDistance << endl;
+                //scalarField[xID][yID][zID] = closestDistance;
             }
+            //cout << " " << endl;
         }
     }
 
     // Dump the scalar field to a .txt file
+    /*
+    std::ofstream out("scalarField.txt");
+    out << xSize << " " << ySize << " " << zSize << endl;
+    for (int x = 0; x < xSize; x++) {
+		for (int y = 0; y < ySize; y++) {
+			for (int z = 0; z < zSize; z++) {
+				out << std::fixed << scalarField[x][y][z] << " ";
+			}
+            out << endl;
+		}
+        out << endl;
+	}
+    out.close();
+    */
+
 
     // Testing stuff (It seems that it flips the distance so - is on the outside? Requires further testing to be
     // sure but test with real distance and can do the paper calculations too).
-    glm::mat4 T = glm::mat4(1);
-    transforms[0] = T;
-    glm::vec3 A = glm::vec3(0,0,0);
-    glm::vec3 B = glm::vec3(0,0,3);
-    glm::vec3 C = glm::vec3(0,3,0);
-    glm::vec3 P = glm::vec3(5,1,1);
+    //glm::mat4 T = glm::mat4(1);
+    //transforms[0] = T;
+    glm::vec3 A = vertices[faces[1].x];
+    std::cout << glm::to_string(A) << endl;
+    glm::vec3 B = vertices[faces[1].y];
+    std::cout << glm::to_string(B) << endl;
+    glm::vec3 C = vertices[faces[1].z];
+    std::cout << glm::to_string(C) << endl;
+    glm::vec3 P = glm::vec3(-2,-2,1.5);
 
-    preComputeFace(0, T, A, B, C);
-    cout << distToTriangle(0, P) << endl;
+    cout << distToTriangle(1, P, A, B, C) << endl;
+    /*
+    */
     
 	return 0;
 }
@@ -173,6 +194,18 @@ glm::mat4 getTransformMatrix(glm::vec3 A, glm::vec3 B, glm::vec3 C){
     glm::mat4 T = glm::mat4(1.f);
     T[3] = translate;
 
+    glm::mat4 transform = R * T;
+
+    // Check to see if C is in positive y or negative y
+    // Flip if negative in the z axis
+    if((transform * glm::vec4(C,1)).y < 0){
+        glm::mat4 zRot = glm::mat4(1);
+        zRot[0] = glm::vec4(-1,0,0,0);
+        zRot[1] = glm::vec4(0,-1,0,0);
+        R = R * zRot;
+        transform = R * T;
+    }
+
     return R * T;
 
 }
@@ -186,7 +219,7 @@ void preComputeFace(int faceID, glm::mat4 transform, glm::vec3 A, glm::vec3 B, g
     glm::vec4 tC = transform * glm::vec4(C,1);
     transformedFaces[faceID][2] = glm::vec2(tC.z, tC.y);
 
-    // Get the normals
+    // Get the normals off each edge
     glm::vec2 AB = transformedFaces[faceID][1] - transformedFaces[faceID][0];
     transformedFaces[faceID][3] = glm::vec2(AB.y, -AB.x);
     glm::vec2 BC = transformedFaces[faceID][2] - transformedFaces[faceID][1];
@@ -195,25 +228,97 @@ void preComputeFace(int faceID, glm::mat4 transform, glm::vec3 A, glm::vec3 B, g
     transformedFaces[faceID][5] = glm::vec2(CA.y, -CA.x);
 }
 
-float distToTriangle(int faceID, glm::vec3 P){
+float distToTriangle(int faceID, glm::vec3 P, glm::vec3 A, glm::vec3 B, glm::vec3 C){
     // Transform P into 2D plane of triangle
-    P = transforms[faceID] * glm::vec4(P,1);
-    glm::vec2 tP = glm::vec2(P.z, P.y);
+    glm::vec3 newP = transforms[faceID] * glm::vec4(P,1);
+    std::cout << "newP: " << glm::to_string(newP) << endl;
+    glm::vec2 tP = glm::vec2(newP.z, newP.y);
+    std::cout << "tP: " << glm::to_string(tP) << endl;
     glm::vec2 tA = transformedFaces[faceID][0];
+    std::cout << "tA: " << glm::to_string(tA) << endl;
     glm::vec2 tB = transformedFaces[faceID][1];
+    std::cout << "tB: " << glm::to_string(tB) << endl;
     glm::vec2 tC = transformedFaces[faceID][2];
+    std::cout << "tC: " << glm::to_string(tC) << endl;
 
     // Determine if point is within the bounds of the triangle using the half plane test
     float AB = (tB.y - tA.y) * tP.x + (tA.x - tB.x) * tP.y + (tB.x * tA.y - tA.x * tB.y);
+    //std::cout << "AB: " << AB << endl;
     float BC = (tC.y - tB.y) * tP.x + (tB.x - tC.x) * tP.y + (tC.x * tB.y - tB.x * tC.y);
+    //std::cout << "BC: " << BC << endl;
     float CA = (tA.y - tC.y) * tP.x + (tC.x - tA.x) * tP.y + (tA.x * tC.y - tC.x * tA.y);
+    //std::cout << "CA: " << CA << endl;
     if(AB <= 0 && BC <= 0 && CA <= 0){
-        return P.x;
+        std::cout << "INSIDE" << endl;
+        // Negative when behind the triangle
+        return -newP.x;
+    }
+
+    // Get the sign on the x coord
+    float sign = 0;
+    if (newP.x <= 0){
+        sign = 1;
+    }
+    else{
+        sign = -1;
     }
 
     // Point must be outside the triangle so check to see if there is a closest vertex
-    // Add the normals onto the required points and do more 2D tests oyeah
+    glm::vec2 AnAB = tA + transformedFaces[faceID][3];
+    glm::vec2 AnCA = tA + transformedFaces[faceID][5];
+    glm::vec2 BnAB = tB + transformedFaces[faceID][3];
+    glm::vec2 BnBC = tB + transformedFaces[faceID][4];
+    glm::vec2 CnBC = tC + transformedFaces[faceID][4];
+    glm::vec2 CnCA = tC + transformedFaces[faceID][5];
 
+    // Test for A vertex
+    float dAnAB = (AnAB.y - tA.y) * tP.x + (tA.x - AnAB.x) * tP.y + (AnAB.x * tA.y - tA.x * AnAB.y);
+    float dAnCA = (AnCA.y - tA.y) * tP.x + (tA.x - AnCA.x) * tP.y + (AnCA.x * tA.y - tA.x * AnCA.y);
+    if(dAnAB >= 0 && dAnCA <= 0){
+        std::cout << "A" << endl;
+        return sign * glm::length(A-P);
+    }
+
+    // Test for B vertex
+    float dBnAB = (BnAB.y - tB.y) * tP.x + (tB.x - BnAB.x) * tP.y + (BnAB.x * tB.y - tB.x * BnAB.y);
+    float dBnBC = (BnBC.y - tB.y) * tP.x + (tB.x - BnBC.x) * tP.y + (BnBC.x * tB.y - tB.x * BnBC.y);
+    if(dBnAB <= 0 && dBnBC >= 0){
+        std::cout << "B" << endl;
+        return sign * glm::length(B-P);
+    }
+
+    // Test for C vertex
+    float dCnBC = (CnBC.y - tC.y) * tP.x + (tC.x - CnBC.x) * tP.y + (CnBC.x * tC.y - tC.x * CnBC.y);
+    float dCnCA = (CnCA.y - tC.y) * tP.x + (tC.x - CnCA.x) * tP.y + (CnCA.x * tC.y - tC.x * CnCA.y);
+    if(dCnBC <= 0 && dCnCA >= 0){
+        std::cout << "C" << endl;
+        return sign * glm::length(C-P);
+    }
+
+    // Test for AB
+    if(AB > 0){
+        std::cout << "AB" << endl;
+        glm::vec3 d = glm::normalize(B-A);
+        glm::vec3 AP = P - A;
+        float dot = glm::dot(AP,d);
+        return sign * glm::length((A + d * dot) - P);
+    }
+    // Test for BC
+    if(BC > 0){
+        std::cout << "BC" << endl;
+        glm::vec3 d = glm::normalize(C-B);
+        glm::vec3 BP = P - B;
+        float dot = glm::dot(BP,d);
+        return sign * glm::length((B + d * dot)-P);
+    }
+    // Test for CA
+    if(CA > 0){
+        std::cout << "CA" << endl;
+        glm::vec3 d = glm::normalize(A-C);
+        glm::vec3 CP = P - C;
+        float dot = glm::dot(CP,d);
+        return sign * glm::length((C + d * dot)-P);
+    }
 
     return 0;
     
