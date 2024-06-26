@@ -13,18 +13,18 @@ int main(int argc, char** argv)
 	std::ifstream dField(argv[1]);
 
 	// Dimensions of the scalar field are first in the file
-	long dimension;
-	dField >> dimension;
+	long xDimension, yDimension, zDimension;
+	dField >> xDimension >> yDimension >> zDimension;
 	//DEBUG LINE
 	//cout << "Dimension of field: " << dimension << endl;
 
 	// Define the scalar field container size
-	scalarField.resize(dimension, vector<vector<float>>(dimension, vector<float>(dimension)));
+	scalarField.resize(xDimension, vector<vector<float>>(yDimension, vector<float>(zDimension)));
 	float distance = 0;
 	// Fill the scalar field container
-	for (int x = 0; x < dimension; x++) {
-		for (int y = 0; y < dimension; y++) {
-			for (int z = 0; z < dimension; z++) {
+	for (int x = 0; x < xDimension; x++) {
+		for (int y = 0; y < yDimension; y++) {
+			for (int z = 0; z < zDimension; z++) {
 				dField >> distance;
 				scalarField[x][y][z] = distance;
 			}
@@ -41,9 +41,9 @@ int main(int argc, char** argv)
 	float distB;
 
 	// March through the distance field
-	for(int x = 0; x < dimension - 1; x++){
-		for(int y = 0; y < dimension - 1; y++){
-			for(int z = 0; z < dimension - 1; z++){
+	for(int x = 0; x < xDimension - 1; x++){
+		for(int y = 0; y < yDimension - 1; y++){
+			for(int z = 0; z < zDimension - 1; z++){
 				// Get the state of the cube
 				int caseNum = 0;
 				for(int i = 0; i < 8; i++){

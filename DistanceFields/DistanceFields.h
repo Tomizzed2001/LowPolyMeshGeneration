@@ -13,6 +13,7 @@
 
 std::vector<glm::mat4> transforms;
 std::vector<std::vector<glm::vec2>> transformedFaces; // A, B, C, nAB, nBC, nCA
+std::vector<glm::vec3> faceNormals;
 
 void fitToGrid(float *point, bool isMin);
 
