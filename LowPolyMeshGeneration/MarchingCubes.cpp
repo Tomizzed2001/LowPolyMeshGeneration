@@ -31,10 +31,9 @@ int main(int argc, char** argv)
 	dField.close();
 
 	// Define vertex holding structures
-	vector<vector<float>> vertices;
-	int numVertices = -1;
-	float vertexA[3];
-	float vertexB[3];
+	vector<glm::vec3> triSoup;
+	glm::vec3 vertexA;
+	glm::vec3 vertexB;
 	float distA;
 	float distB;
 
@@ -56,45 +55,111 @@ int main(int argc, char** argv)
 				for(int i = 1; i < (numTriangles*3)+1; i++){
 					// Edge to place vertex
 					int edge = triangleTable[caseNum][i];
-					//DEBUG LINE
-					// Add a new vertex
-					vertices.push_back(vector<float>());
-					numVertices++;
+
 					// Store the edge vertices
 					for(int j = 0; j < 3; j++){
 						vertexA[j] = vertPos[edgeTable[edge][0]][j];
 						vertexB[j] = vertPos[edgeTable[edge][1]][j];
 					}
+
 					// Add the current position to put into world co-ords
-					vertexA[0] += x;
-					vertexB[0] += x;
-					vertexA[1] += y;
-					vertexB[1] += y;
-					vertexA[2] += z;
-					vertexB[2] += z;
+					vertexA = vertexA + glm::vec3(x,y,z);
+					vertexB = vertexB + glm::vec3(x,y,z);
+
 					// Get distance at the vertices from scalar fields
 					distA = scalarField[vertexA[0]][vertexA[1]][vertexA[2]];
 					distB = scalarField[vertexB[0]][vertexB[1]][vertexB[2]];
+
 					// Get vertex position on the edge using linear interpolation
-					for(int j = 0; j < 3; j++){
-						// Store resulting triangle after doing linear interpolation
-						float Ad = (ISOVALUE - distA) * (vertexB[j] - vertexA[j]) / (distB - distA);
-						vertices[numVertices].push_back(float(vertexA[j] + Ad));
-					}
+					triSoup.push_back(vertexA + (ISOVALUE - distA) * (vertexB - vertexA) / (distB - distA));
 				}
 			}
 		}
 	}
 
+	/* Output to triangle soup .tri file
 	// Write the output to triangle soup file
-	ofstream out("out.tri");
-	out <<  vertices.size() / 3 << endl;
+	ofstream outOld("out.tri");
+	outOld <<  triSoup.size() / 3 << endl;
 
+	for(size_t i = 0; i < triSoup.size(); i++){
+		outOld << std::fixed << triSoup[i][0] << " " << triSoup[i][1] << " " << triSoup[i][2] << " " << endl;
+	}
+
+	outOld.close();
+	*/
+
+	// Build the directed edge data structure from the triangle soup.
+	for(size_t vID = 0; vID < triSoup.size(); vID++){
+		// Get the vertex index and place if not found.
+		int vertex = getVertexID(triSoup[vID]);
+		// Add the vertex id to the face
+		faces.push_back(vertex);
+	}
+
+	// Index storage variables
+	int v0, v1;
+
+	otherHalf.resize(faces.size(),-1);
+
+	// Get the other half
+	for(size_t eID = 0; eID < faces.size(); eID++){
+		// Since faces form the edges check if it needs to search for 2 to 0 edge
+		if (eID % 3 == 2){
+			v0 = faces[eID];
+			v1 = faces[eID-2];
+		}
+		else{
+			v0 = faces[eID];
+			v1 = faces[eID+1];
+		}
+
+		// Look for v1 to v0
+		for(size_t fID = 0; fID < faces.size(); fID+=3){
+			if(faces[fID] == v1 && faces[fID+1] == v0){
+				otherHalf[eID] = fID + 0;
+				break;
+			}
+			else if(faces[fID+1] == v1 && faces[fID+2] == v0){
+				otherHalf[eID] = fID + 1;
+				break;
+			}
+			else if(faces[fID+2] == v1 && faces[fID] == v0){
+				otherHalf[eID] = fID + 2;
+				break;
+			}
+		}
+	}
+
+	// Write the output to a directed edge file format
+	ofstream out("out.diredge");
 	for(size_t i = 0; i < vertices.size(); i++){
-		out << std::fixed << vertices[i][0] << " " << vertices[i][1] << " " << vertices[i][2] << " " << endl;
+		out << "v " << std::fixed << vertices[i][0] << " " << vertices[i][1] << " " << vertices[i][2] << endl;
+	}
+	for(size_t i = 0; i < firstDirectedEdges.size(); i++){
+		out << "fde " << firstDirectedEdges[i] << endl;
+	} 
+	for(size_t i = 0; i < faces.size(); i+=3){
+		out << "f " << faces[i] << " " << faces[i+1] << " " << faces[i+2] << endl;
+	}
+	for(size_t i = 0; i < otherHalf.size(); i++){
+		out << "oh " << otherHalf[i] << endl;
 	}
 
 	out.close();
 
 	return 0;
+}
+
+int getVertexID(glm::vec3 vertex){
+	// Look to see if the vertex already exists
+	for(size_t i = 0; i < vertices.size(); i++){
+		if(vertex == vertices[i]){
+			return i;
+		}
+	}
+	// Place the vertex in the vertex array and return the index
+	vertices.push_back(vertex);
+	firstDirectedEdges.push_back(faces.size());
+	return vertices.size() - 1;
 }
