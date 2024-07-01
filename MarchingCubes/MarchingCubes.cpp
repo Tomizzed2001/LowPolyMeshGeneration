@@ -15,8 +15,6 @@ int main(int argc, char** argv)
 	// Dimensions of the scalar field are first in the file
 	long xDimension, yDimension, zDimension;
 	dField >> xDimension >> yDimension >> zDimension;
-	//DEBUG LINE
-	//cout << "Dimension of field: " << dimension << endl;
 
 	// Define the scalar field container size
 	scalarField.resize(xDimension, vector<vector<float>>(yDimension, vector<float>(zDimension)));
@@ -52,8 +50,6 @@ int main(int argc, char** argv)
 						caseNum += pow(2, i);
 					}
 				}
-				//DEBUG LINE
-				//cout << "Vertex: "<< x << ", " << y << ", " << z << ", " << "Case:" << caseNum << endl;
 
 				// Use lookup table to find case
 				int numTriangles = triangleTable[caseNum][0];
@@ -61,7 +57,6 @@ int main(int argc, char** argv)
 					// Edge to place vertex
 					int edge = triangleTable[caseNum][i];
 					//DEBUG LINE
-					//cout << "Edge: " << triangleTable[caseNum][i] << endl;
 					// Add a new vertex
 					vertices.push_back(vector<float>());
 					numVertices++;
@@ -69,8 +64,6 @@ int main(int argc, char** argv)
 					for(int j = 0; j < 3; j++){
 						vertexA[j] = vertPos[edgeTable[edge][0]][j];
 						vertexB[j] = vertPos[edgeTable[edge][1]][j];
-						//DEBUG LINE
-						//vertices[numVertices].push_back(float(vertPos[edgeTable[edge][0]][j] + vertPos[edgeTable[edge][1]][j]) / 2.0);
 					}
 					// Add the current position to put into world co-ords
 					vertexA[0] += x;
@@ -85,16 +78,9 @@ int main(int argc, char** argv)
 					// Get vertex position on the edge using linear interpolation
 					for(int j = 0; j < 3; j++){
 						// Store resulting triangle after doing linear interpolation
-						vertices[numVertices].push_back(float(vertexA[j] + (ISOVALUE - distA) * (vertexB[j] - vertexA[j]) / (distB - distA)));
+						float Ad = (ISOVALUE - distA) * (vertexB[j] - vertexA[j]) / (distB - distA);
+						vertices[numVertices].push_back(float(vertexA[j] + Ad));
 					}
-					/*
-					// DEBUG LINES
-					cout << "Distance A: " << distA;
-					cout << " Vertex A: " << vertexA[0] << ", " << vertexA[1] << ", " << vertexA[2] << endl;
-					cout << "Distance B: " << distB;
-					cout << " Vertex B: " << vertexB[0] << ", " << vertexB[1] << ", " << vertexB[2] << endl;
-					cout << "Vertex P: " << vertices[numVertices][0] + x << ", " << vertices[numVertices][1] + y << ", " << vertices[numVertices][2] + z << endl;
-					*/	
 				}
 			}
 		}

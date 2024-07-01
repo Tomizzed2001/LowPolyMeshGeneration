@@ -123,9 +123,12 @@ int main(int argc, char** argv)
                     }
                 }
                 //cout << "New Point: " << x << ", " << y << ", " << z << " Dist: " << closestDistance << endl;
+                // Remove any "negative" zeros
+                if(closestDistance == 0){
+                    closestDistance = 0;
+                }
                 scalarField[xID][yID][zID] = closestDistance;
             }
-            cout << " " << endl;
         }
     }
 
@@ -135,7 +138,8 @@ int main(int argc, char** argv)
     for (int x = 0; x < xSize; x++) {
 		for (int y = 0; y < ySize; y++) {
 			for (int z = 0; z < zSize; z++) {
-				out << std::fixed << scalarField[x][y][z] << " ";
+                // Truncate at 4 decimal places and add 5 as the 5th (0.00005)
+				out << std::fixed << setprecision(4) << scalarField[x][y][z] << 5 << " ";
 			}
             out << endl;
 		}

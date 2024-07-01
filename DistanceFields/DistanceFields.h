@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include <cmath>
+#include <iomanip>
 #include "glm/glm.hpp"
 
 std::vector<glm::mat4> transforms;
