@@ -1,7 +1,7 @@
 CC = g++
 CFLAGS = -c -Wall -Iinclude
 
-all: DistanceFields MarchingCubes
+all: DistanceFields MarchingCubes Simplification
 
 DistanceFields: DistanceFields.o
 	$(CC)  DistanceFields.o -o DistanceFields
@@ -14,3 +14,9 @@ MarchingCubes: MarchingCubes.o
 
 MarchingCubes.o: MarchingCubes.cpp MarchingCubes.h
 	$(CC) $(CFLAGS) MarchingCubes.cpp
+
+Simplification: Simplification.o
+	$(CC)  Simplification.o -o Simplification
+
+Simplification.o: Simplification.cpp Simplification.h
+	$(CC) $(CFLAGS) Simplification.cpp
