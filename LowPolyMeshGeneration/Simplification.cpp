@@ -4,7 +4,7 @@
 
 using namespace std;
 
-#define DESIRED_TRIANGLE_COUNT 100
+#define DESIRED_TRIANGLE_COUNT 40
 
 int main(int argc, char** argv){
     // Read in the .diredge file provided
@@ -55,21 +55,103 @@ int main(int argc, char** argv){
     for(size_t vID = 0; vID < vertices.size(); vID++){
         // Vector to store the K values of the 1-ring
         vector<glm::mat4> allK;
+        glm::mat4 Q = glm::mat4(0);
 
         // Find the 1-ring
         for(size_t edgeID = 0; edgeID < faces.size(); edgeID++){
             if(faces[edgeID] == vID){
                 // Calculate the triangle ID and return K
-                // allK.push_back(findK(vID / 3));
-                break;
+                allK.push_back(findK(edgeID / 3));
             }
         }
+
+        // Sum the K matrices to get Q for the vertex
+        for(size_t i = 0; i < allK.size(); i++){
+            Q = Q + allK[i];
+        }
+
+        quadrics[vID] = Q;
+    }
+    
+    // Step 2: Find error cost for each valid half edge
+    errorCosts.resize(otherHalf.size());
+    for(size_t ohID = 0; ohID < otherHalf.size(); ohID++){
+        // Check if it is a "valid" collapse
+        std::unordered_set<unsigned int> aOneRing = findOneRing(faces[ohID]);
+        std::unordered_set<unsigned int> bOneRing = findOneRing(faces[otherHalf[ohID]]);
+        int intersectionCount = 0;
+        for(auto id: aOneRing) {
+            if(bOneRing.find(id) != bOneRing.end()){
+                intersectionCount++;
+            }
+        }
+        // If the one ring of both vertices intersect at more than 2 vertices it is an invalid operation
+        if (intersectionCount > 2){
+            // Invalid collapse operation
+            errorCosts[ohID] = -1;
+            continue;
+        }
+        
+        // Place on the "from" vertex
+        glm::vec4 v1 = glm::vec4(vertices[faces[ohID]], 1);
+
+        // Get the quadric for each vertex
+        glm::mat4 Q1 = quadrics[faces[ohID]];
+        glm::mat4 Q2 = quadrics[faces[otherHalf[ohID]]];
+
+        // Join the quadrics and calculate the error vQv
+        errorCosts[ohID] = glm::length( v1 * (Q1 + Q2) * v1 );
     }
 
-    findK(4);
+    // Step 3: Place otherhalf IDs on a heap ordererd by error cost.
+    priority_queue<pair<float, int>, vector<pair<float, int>>, greater<pair<float, int>>> collapseOrder;
+    for(size_t i = 0; i < errorCosts.size(); i++){
+        if(errorCosts[i] == -1){
+            continue;
+        }
+        collapseOrder.push(make_pair(errorCosts[i], i));
+    }
+
+    // Complete the collapse in the order of lowest error cost first
+    while((faces.size() / 3) > DESIRED_TRIANGLE_COUNT || collapseOrder.empty()){
+        // Get the edge to collapse
+        unsigned int edge = collapseOrder.top().second;
+        unsigned int otherEdge = otherHalf[collapseOrder.top().second];
+
+        // Get the vertices involved
+        unsigned int keptVertex = faces[edge]; 
+        unsigned int goneVertex = faces[otherEdge];
+
+        // Remove the first face (1/2)
+        removeFace(edge / 3);
+        // Remove the second face (2/2)
+        removeFace(otherEdge / 3);
+
+        // Replace all instances of the goneVertex with the keptVertex
+        for(size_t eID = 0; eID < faces.size(); eID++){
+            if(faces[eID] == goneVertex){
+                faces[eID] = keptVertex;
+            }
+        }
+
+        // Update half edges to be merged edges
+        // Final 6 half edges no longer exist
+        unsigned int newEdgeNum = otherHalf.size() - 6;
+        for(unsigned int eID = 0; eID < newEdgeNum; eID++){
+            if(otherHalf[eID] >= newEdgeNum){
+                findOtherHalf(eID);
+            }
+        }
+
+        // Remove vertices on output at the end
+
+        // Update the error costs for affected vertices
+        
 
 
-
+        collapseOrder.pop();
+        break;
+    }
 }
 
 glm::mat4 findK(int triangleID){
@@ -93,3 +175,118 @@ glm::mat4 findK(int triangleID){
 
     return glm::mat4(K);
 }
+
+std::unordered_set<unsigned int> findOneRing(unsigned int vertexID){
+    std::unordered_set<unsigned int> oneRing;
+
+    // Loop through the faces finding each triangle the vertex is part of
+    for(size_t edgeID = 0; edgeID < faces.size(); edgeID++){
+        if(faces[edgeID] == vertexID){
+            // Vertex is A in the triangle
+            if(edgeID % 3 == 0){
+                oneRing.insert(faces[edgeID + 1]);
+                oneRing.insert(faces[edgeID + 2]);
+                continue;
+            }
+            // Vertex is B in the triangle
+            if(edgeID % 3 == 1){
+                oneRing.insert(faces[edgeID - 1]);
+                oneRing.insert(faces[edgeID + 1]);
+                continue;
+            }
+            // Vertex is C in the triangle
+            if(edgeID % 3 == 0){
+                oneRing.insert(faces[edgeID - 2]);
+                oneRing.insert(faces[edgeID - 1]);
+                continue;
+            }
+        }
+    }
+
+    return oneRing;
+}
+
+void removeFace(unsigned int faceID){
+    // Check that its not the last triangle in the array and swap if not
+    if (faceID != faces.size()-3){
+        vector<pair<unsigned int, unsigned int>> swapMap;
+        // Swap vertices
+        swapMap.push_back(make_pair(faces[faceID], faces[faces.size()-3]));
+        faces[faceID] = faces[faces.size()-3];
+        swapMap.push_back(make_pair(faces[faceID+1], faces[faces.size()-2]));
+        faces[faceID+1] = faces[faces.size()-2];
+        swapMap.push_back(make_pair(faces[faceID+2], faces[faces.size()-1]));
+        faces[faceID+2] = faces[faces.size()-1];
+
+        // Update otherHalf to match swapped faces
+        for(pair<unsigned int, unsigned int> swap: swapMap){
+            int pairsFound = 0;
+            unsigned int firstIndex, secondIndex;
+            for(size_t i = 0; i < otherHalf.size() || pairsFound == 2; i++){
+                if(swap.first == otherHalf[i]){
+                    firstIndex = i;
+                    // Check the edge isnt the same but swapped
+                    if(firstIndex == swap.second){
+                        break;
+                    }
+                    pairsFound++;
+                    continue;
+                }
+                else if(swap.second == otherHalf[i]){
+                    secondIndex = i;
+                    // Check the edge isnt the same but swapped
+                    if(secondIndex == swap.first){
+                        break;
+                    }
+                    pairsFound++;
+                    continue;
+                }
+            }
+            // Must already exist and was forced to break out of loop
+            if(pairsFound != 2){
+                continue;
+            }
+            // Update values
+            otherHalf[swap.second] = firstIndex;
+            otherHalf[swap.first] = secondIndex;
+            otherHalf[firstIndex] = swap.second;
+            otherHalf[secondIndex] = swap.first;
+        }
+    }
+
+    // Remove the final face
+    faces.pop_back();
+    faces.pop_back();
+    faces.pop_back();
+}
+
+void findOtherHalf(unsigned int edgeID){
+    unsigned int v0, v1;
+    if (edgeID % 3 == 2){
+        v0 = faces[edgeID];
+        v1 = faces[edgeID-2];
+    }
+    else{
+        v0 = faces[edgeID];
+        v1 = faces[edgeID+1];
+    }
+
+    // Look for v1 to v0
+    for(size_t fID = 0; fID < faces.size(); fID+=3){
+        if(faces[fID] == v1 && faces[fID+1] == v0){
+            otherHalf[edgeID] = fID + 0;
+            break;
+        }
+        else if(faces[fID+1] == v1 && faces[fID+2] == v0){
+            otherHalf[edgeID] = fID + 1;
+            break;
+        }
+        else if(faces[fID+2] == v1 && faces[fID] == v0){
+            otherHalf[edgeID] = fID + 2;
+            break;
+        }
+    }
+
+    otherHalf[otherHalf[edgeID]] = edgeID;
+}
+
