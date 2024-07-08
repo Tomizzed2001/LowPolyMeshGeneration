@@ -53,54 +53,13 @@ int main(int argc, char** argv){
     // Step 1: Find Q for each vertex
     quadrics.resize(vertices.size());
     for(size_t vID = 0; vID < vertices.size(); vID++){
-        // Vector to store the K values of the 1-ring
-        vector<glm::mat4> allK;
-        glm::mat4 Q = glm::mat4(0);
-
-        // Find the 1-ring
-        for(size_t edgeID = 0; edgeID < faces.size(); edgeID++){
-            if(faces[edgeID] == vID){
-                // Calculate the triangle ID and return K
-                allK.push_back(findK(edgeID / 3));
-            }
-        }
-
-        // Sum the K matrices to get Q for the vertex
-        for(size_t i = 0; i < allK.size(); i++){
-            Q = Q + allK[i];
-        }
-
-        quadrics[vID] = Q;
+        updateQ(vID);
     }
     
     // Step 2: Find error cost for each valid half edge
     errorCosts.resize(otherHalf.size());
     for(size_t ohID = 0; ohID < otherHalf.size(); ohID++){
-        // Check if it is a "valid" collapse
-        std::unordered_set<unsigned int> aOneRing = findOneRing(faces[ohID]);
-        std::unordered_set<unsigned int> bOneRing = findOneRing(faces[otherHalf[ohID]]);
-        int intersectionCount = 0;
-        for(auto id: aOneRing) {
-            if(bOneRing.find(id) != bOneRing.end()){
-                intersectionCount++;
-            }
-        }
-        // If the one ring of both vertices intersect at more than 2 vertices it is an invalid operation
-        if (intersectionCount > 2){
-            // Invalid collapse operation
-            errorCosts[ohID] = -1;
-            continue;
-        }
-        
-        // Place on the "from" vertex
-        glm::vec4 v1 = glm::vec4(vertices[faces[ohID]], 1);
-
-        // Get the quadric for each vertex
-        glm::mat4 Q1 = quadrics[faces[ohID]];
-        glm::mat4 Q2 = quadrics[faces[otherHalf[ohID]]];
-
-        // Join the quadrics and calculate the error vQv
-        errorCosts[ohID] = glm::length( v1 * (Q1 + Q2) * v1 );
+        updateError(ohID);
     }
 
     // Step 3: Place otherhalf IDs on a heap ordererd by error cost.
@@ -111,6 +70,8 @@ int main(int argc, char** argv){
         }
         collapseOrder.push(make_pair(errorCosts[i], i));
     }
+
+    int counter = 0;
 
     // Complete the collapse in the order of lowest error cost first
     while((faces.size() / 3) > DESIRED_TRIANGLE_COUNT || collapseOrder.empty()){
@@ -143,15 +104,54 @@ int main(int argc, char** argv){
             }
         }
 
-        // Remove vertices on output at the end
+        // Update the vertices in the new 1-ring of keptVertex
+        std::unordered_set<unsigned int> aOneRing = findOneRing(keptVertex);
+        for(auto id: aOneRing) {
+            updateQ(id);
+        }
 
-        // Update the error costs for affected vertices
-        
+        // Update the error costs for any edge involving keptVertex
+        vector<unsigned int> changedEdges;
+        for(unsigned int eID = 0; eID < faces.size(); eID++){
+            if(faces[eID] != keptVertex){
+                continue;
+            }
+            else{
+                if (eID % 3 == 0){
+                    changedEdges.push_back(eID);
+                    changedEdges.push_back(eID + 2);
+                }
+                else{
+                    changedEdges.push_back(eID);
+                    changedEdges.push_back(eID-1);
+                }
+            }
+        }
+        for(unsigned int eID = 0; eID < changedEdges.size(); eID++){
+            updateError(changedEdges[eID]);
+        }
 
+        // Re-Generate Collapse Order
+        collapseOrder = priority_queue<pair<float, int>, vector<pair<float, int>>, greater<pair<float, int>>>();
+        for(size_t i = 0; i < errorCosts.size(); i++){
+            if(errorCosts[i] == -1){
+                continue;
+            }
+            collapseOrder.push(make_pair(errorCosts[i], i));
+        }
 
-        collapseOrder.pop();
-        break;
+        counter++;
+
+        //break;
+        cout << "Removed One: " << counter << endl;
     }
+
+    // Remove un-used vertices and cascade the changes
+
+    // Produce the vertex normals for the output
+
+    // Output to .obj file
+
 }
 
 glm::mat4 findK(int triangleID){
@@ -258,6 +258,8 @@ void removeFace(unsigned int faceID){
     faces.pop_back();
     faces.pop_back();
     faces.pop_back();
+
+    return;
 }
 
 void findOtherHalf(unsigned int edgeID){
@@ -288,5 +290,58 @@ void findOtherHalf(unsigned int edgeID){
     }
 
     otherHalf[otherHalf[edgeID]] = edgeID;
+
+    return;
 }
 
+void updateQ(unsigned int vertexID){
+    vector<glm::mat4> allK;
+    glm::mat4 Q = glm::mat4(0);
+
+    // Find the 1-ring
+    for(size_t edgeID = 0; edgeID < faces.size(); edgeID++){
+        if(faces[edgeID] == vertexID){
+            // Calculate the triangle ID and return K
+            allK.push_back(findK(edgeID / 3));
+        }
+    }
+
+    // Sum the K matrices to get Q for the vertex
+    for(size_t i = 0; i < allK.size(); i++){
+        Q = Q + allK[i];
+    }
+
+    quadrics[vertexID] = Q;
+
+    return;
+}
+
+void updateError(unsigned int edgeID){
+    // Check if it is a "valid" collapse
+    std::unordered_set<unsigned int> aOneRing = findOneRing(faces[edgeID]);
+    std::unordered_set<unsigned int> bOneRing = findOneRing(faces[otherHalf[edgeID]]);
+    int intersectionCount = 0;
+    for(auto id: aOneRing) {
+        if(bOneRing.find(id) != bOneRing.end()){
+            intersectionCount++;
+        }
+    }
+    // If the one ring of both vertices intersect at more than 2 vertices it is an invalid operation
+    if (intersectionCount > 2){
+        // Invalid collapse operation
+        errorCosts[edgeID] = -1;
+        return;
+    }
+    
+    // Place on the "from" vertex
+    glm::vec4 v1 = glm::vec4(vertices[faces[edgeID]], 1);
+
+    // Get the quadric for each vertex
+    glm::mat4 Q1 = quadrics[faces[edgeID]];
+    glm::mat4 Q2 = quadrics[faces[otherHalf[edgeID]]];
+
+    // Join the quadrics and calculate the error vQv
+    errorCosts[edgeID] = glm::length( v1 * (Q1 + Q2) * v1 );
+
+    return;
+}

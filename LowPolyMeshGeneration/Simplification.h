@@ -28,3 +28,7 @@ std::unordered_set<unsigned int> findOneRing(unsigned int vertexID);
 void removeFace(unsigned int faceID);
 
 void findOtherHalf(unsigned int edgeID);
+
+void updateQ(unsigned int vertexID);
+
+void updateError(unsigned int edgeID);
