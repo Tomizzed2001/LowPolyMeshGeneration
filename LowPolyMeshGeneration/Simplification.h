@@ -15,6 +15,7 @@
 #include "glm/glm.hpp"
 
 std::vector<glm::vec3> vertices;
+std::vector<glm::vec3> vertexNormals;
 std::vector<unsigned int> faces;
 std::vector<unsigned int> firstDirectedEdges;
 std::vector<unsigned int> otherHalf;
@@ -32,3 +33,7 @@ void findOtherHalf(unsigned int edgeID);
 void updateQ(unsigned int vertexID);
 
 void updateError(unsigned int edgeID);
+
+void outputToDiredge();
+
+void outputToObject();

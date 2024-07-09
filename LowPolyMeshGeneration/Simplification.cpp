@@ -62,6 +62,12 @@ int main(int argc, char** argv){
         updateError(ohID);
     }
 
+    ofstream out("out0.error");
+    for(size_t i = 0; i < errorCosts.size(); i++){
+        out << errorCosts[i] << endl;
+    }
+    out.close();
+
     // Step 3: Place otherhalf IDs on a heap ordererd by error cost.
     priority_queue<pair<float, int>, vector<pair<float, int>>, greater<pair<float, int>>> collapseOrder;
     for(size_t i = 0; i < errorCosts.size(); i++){
@@ -71,7 +77,9 @@ int main(int argc, char** argv){
         collapseOrder.push(make_pair(errorCosts[i], i));
     }
 
-    int counter = 0;
+    vector<unsigned int> removedVertices;
+
+    int counter = 1;
 
     // Complete the collapse in the order of lowest error cost first
     while((faces.size() / 3) > DESIRED_TRIANGLE_COUNT || collapseOrder.empty()){
@@ -79,9 +87,14 @@ int main(int argc, char** argv){
         unsigned int edge = collapseOrder.top().second;
         unsigned int otherEdge = otherHalf[collapseOrder.top().second];
 
+        //cout << "Edge: " << edge << " Other Edge: " << otherEdge << endl;
+
         // Get the vertices involved
         unsigned int keptVertex = faces[edge]; 
         unsigned int goneVertex = faces[otherEdge];
+
+        //cout << "Keep Vertex: " << keptVertex << " Remove Vertex: " << goneVertex << endl;
+
 
         // Remove the first face (1/2)
         removeFace(edge / 3);
@@ -94,6 +107,8 @@ int main(int argc, char** argv){
                 faces[eID] = keptVertex;
             }
         }
+
+        removedVertices.push_back(goneVertex);
 
         // Update half edges to be merged edges
         // Final 6 half edges no longer exist
@@ -131,6 +146,14 @@ int main(int argc, char** argv){
             updateError(changedEdges[eID]);
         }
 
+        std::string var = "out" + to_string(counter) + ".error";
+
+        ofstream out(var);
+        for(size_t i = 0; i < errorCosts.size(); i++){
+            out << errorCosts[i] << endl;
+        }
+        out.close();
+
         // Re-Generate Collapse Order
         collapseOrder = priority_queue<pair<float, int>, vector<pair<float, int>>, greater<pair<float, int>>>();
         for(size_t i = 0; i < errorCosts.size(); i++){
@@ -142,15 +165,65 @@ int main(int argc, char** argv){
 
         counter++;
 
-        //break;
-        cout << "Removed One: " << counter << endl;
+        if(counter == 3){
+            break;
+        }
     }
 
-    // Remove un-used vertices and cascade the changes
+    outputToObject();
 
-    // Produce the vertex normals for the output
+
+    //cout << "Removing vertices" << endl;
+    // Remove un-used vertices and cascade the changes
+    for(size_t i = 0; i < removedVertices.size(); i++){
+        // Remove the vertex from vertices
+        vertices.erase(vertices.begin() + (removedVertices[i]));
+        // Decrement all vertices that had higher index
+        for(size_t eID = 0; eID < faces.size(); eID++){
+            if(faces[eID] > removedVertices[i]){
+                faces[eID]--;
+            }
+        }
+        // Decrement the removed vertex list
+        for(size_t j = i; j < removedVertices.size(); j++){
+            if(removedVertices[j] > removedVertices[i]){
+                removedVertices[j]--;
+            }
+        }
+    }
+
+    // Produce the smooth vertex normals for the output
+    for(size_t vID = 0; vID < vertices.size(); vID++){
+        vector<glm::vec3> triangleNormals;
+        // Find the triangles using the vertex
+        for(size_t edgeID = 0; edgeID < faces.size(); edgeID++){
+            if(faces[edgeID] == vID){
+                int triangleID = edgeID / 3;
+                // Get the triangle
+                glm::vec3 A, B, C;
+                A = vertices[faces[triangleID * 3]];
+                B = vertices[faces[triangleID * 3 + 1]];
+                C = vertices[faces[triangleID * 3 + 2]];
+
+                // Calculate the normal
+                glm::vec3 norm = glm::normalize( glm::cross(B-A, C-A) );
+                //cout << "New Normal: " << glm::to_string(norm) << endl;
+                triangleNormals.push_back(norm);
+            }
+        }
+        // Average the triangle normals
+        glm::vec3 normal = glm::vec3(0,0,0);
+        for(glm::vec3 n: triangleNormals){
+            normal = normal + n;
+        }
+        normal = glm::normalize(normal / float(triangleNormals.size()));
+        vertexNormals.push_back(normal);
+        //cout << "Final Normal: " << glm::to_string(normal) << endl;
+        //break;
+    }
 
     // Output to .obj file
+    //outputToObject();
 
 }
 
@@ -206,7 +279,8 @@ std::unordered_set<unsigned int> findOneRing(unsigned int vertexID){
     return oneRing;
 }
 
-void removeFace(unsigned int faceID){
+void removeFace(unsigned int triangleID){
+    unsigned int faceID = triangleID * 3;
     // Check that its not the last triangle in the array and swap if not
     if (faceID != faces.size()-3){
         vector<pair<unsigned int, unsigned int>> swapMap;
@@ -345,3 +419,41 @@ void updateError(unsigned int edgeID){
 
     return;
 }
+
+void outputToDiredge(){
+    // Write the output to a directed edge file format
+	ofstream out("dump.diredge");
+	for(size_t i = 0; i < vertices.size(); i++){
+		out << "v " << std::fixed << vertices[i][0] << " " << vertices[i][1] << " " << vertices[i][2] << endl;
+	}
+	for(size_t i = 0; i < firstDirectedEdges.size(); i++){
+		out << "fde " << firstDirectedEdges[i] << endl;
+	} 
+	for(size_t i = 0; i < faces.size(); i+=3){
+		out << "f " << faces[i] << " " << faces[i+1] << " " << faces[i+2] << endl;
+	}
+	for(size_t i = 0; i < otherHalf.size(); i++){
+		out << "oh " << otherHalf[i] << endl;
+	}
+
+	out.close();
+}
+
+void outputToObject(){
+    ofstream out("out.obj");
+	for(size_t i = 0; i < vertices.size(); i++){
+		out << "v " << std::fixed << vertices[i][0] << " " << vertices[i][1] << " " << vertices[i][2] << endl;
+	}
+    for(size_t i = 0; i < vertexNormals.size(); i++){
+		out << "vn " << std::fixed << vertexNormals[i][0] << " " << vertexNormals[i][1] << " " << vertexNormals[i][2] << endl;
+	}
+	for(size_t i = 0; i < faces.size(); i+=3){
+		out << "f " 
+        << faces[i] + 1 << "//" << " "
+        << faces[i+1] + 1 << "//" << " "
+        << faces[i+2] + 1 << "//"
+        << endl;
+	}
+	out.close();
+}
+
