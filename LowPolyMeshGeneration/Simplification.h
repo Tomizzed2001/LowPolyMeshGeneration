@@ -37,3 +37,5 @@ void updateError(unsigned int edgeID);
 void outputToDiredge();
 
 void outputToObject();
+
+void outputToObject(int num);

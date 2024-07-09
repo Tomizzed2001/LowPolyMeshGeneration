@@ -62,12 +62,6 @@ int main(int argc, char** argv){
         updateError(ohID);
     }
 
-    ofstream out("out0.error");
-    for(size_t i = 0; i < errorCosts.size(); i++){
-        out << errorCosts[i] << endl;
-    }
-    out.close();
-
     // Step 3: Place otherhalf IDs on a heap ordererd by error cost.
     priority_queue<pair<float, int>, vector<pair<float, int>>, greater<pair<float, int>>> collapseOrder;
     for(size_t i = 0; i < errorCosts.size(); i++){
@@ -77,29 +71,55 @@ int main(int argc, char** argv){
         collapseOrder.push(make_pair(errorCosts[i], i));
     }
 
+    priority_queue<pair<float, int>, vector<pair<float, int>>, greater<pair<float, int>>> testOrder = collapseOrder;
+
+    ofstream out("errors/error0.error");
+    while(! testOrder.empty()){
+        out << testOrder.top().first << " " << testOrder.top().second << endl;
+        testOrder.pop();
+    }
+    out.close();
+    /*
+    */
+
     vector<unsigned int> removedVertices;
 
     int counter = 1;
 
     // Complete the collapse in the order of lowest error cost first
     while((faces.size() / 3) > DESIRED_TRIANGLE_COUNT || collapseOrder.empty()){
+        std::string var = "otherHalves/otherHalf" + to_string(counter-1) + ".oh";
+        ofstream outt(var);
+        for(size_t i = 0; i < otherHalf.size(); i++){
+            outt << otherHalf[i] << endl;
+        }
+        outt.close();
+
+        cout << "Run: " << counter << endl;
         // Get the edge to collapse
         unsigned int edge = collapseOrder.top().second;
         unsigned int otherEdge = otherHalf[collapseOrder.top().second];
 
-        //cout << "Edge: " << edge << " Other Edge: " << otherEdge << endl;
+        cout << "Edge: " << edge << " Other Edge: " << otherEdge << endl;
 
         // Get the vertices involved
         unsigned int keptVertex = faces[edge]; 
         unsigned int goneVertex = faces[otherEdge];
 
-        //cout << "Keep Vertex: " << keptVertex << " Remove Vertex: " << goneVertex << endl;
+        cout << "Keep Vertex: " << keptVertex + 1 << " Remove Vertex: " << goneVertex + 1 << endl;
 
-
-        // Remove the first face (1/2)
-        removeFace(edge / 3);
-        // Remove the second face (2/2)
-        removeFace(otherEdge / 3);
+        // Check that the second triangle to be removed is not the final face
+        // Remove the faces
+        if ((otherEdge / 3) * 3 == faces.size()-3){
+            cout << "OTHER IS ON THE FINAL FACE" << endl;
+            removeFace(otherEdge / 3);
+            removeFace(edge / 3);
+        }
+        else{
+            removeFace(edge / 3);
+            removeFace(otherEdge / 3);
+        }
+        
 
         // Replace all instances of the goneVertex with the keptVertex
         for(size_t eID = 0; eID < faces.size(); eID++){
@@ -113,6 +133,7 @@ int main(int argc, char** argv){
         // Update half edges to be merged edges
         // Final 6 half edges no longer exist
         unsigned int newEdgeNum = otherHalf.size() - 6;
+        otherHalf.erase(otherHalf.end()-6, otherHalf.end());
         for(unsigned int eID = 0; eID < newEdgeNum; eID++){
             if(otherHalf[eID] >= newEdgeNum){
                 findOtherHalf(eID);
@@ -121,6 +142,7 @@ int main(int argc, char** argv){
 
         // Update the vertices in the new 1-ring of keptVertex
         std::unordered_set<unsigned int> aOneRing = findOneRing(keptVertex);
+        updateQ(keptVertex);
         for(auto id: aOneRing) {
             updateQ(id);
         }
@@ -146,14 +168,6 @@ int main(int argc, char** argv){
             updateError(changedEdges[eID]);
         }
 
-        std::string var = "out" + to_string(counter) + ".error";
-
-        ofstream out(var);
-        for(size_t i = 0; i < errorCosts.size(); i++){
-            out << errorCosts[i] << endl;
-        }
-        out.close();
-
         // Re-Generate Collapse Order
         collapseOrder = priority_queue<pair<float, int>, vector<pair<float, int>>, greater<pair<float, int>>>();
         for(size_t i = 0; i < errorCosts.size(); i++){
@@ -163,14 +177,27 @@ int main(int argc, char** argv){
             collapseOrder.push(make_pair(errorCosts[i], i));
         }
 
+
+        testOrder = collapseOrder;
+        var = "errors/error" + to_string(counter) + ".error";
+        ofstream out(var);
+        while(! testOrder.empty()){
+            out << testOrder.top().first << " " << testOrder.top().second << endl;
+            testOrder.pop();
+        }
+        out.close();
+        /*
+        */
+
+        outputToObject(counter);
         counter++;
 
-        if(counter == 3){
+        if(counter == 18){
             break;
         }
     }
 
-    outputToObject();
+    //outputToObject();
 
 
     //cout << "Removing vertices" << endl;
@@ -224,7 +251,6 @@ int main(int argc, char** argv){
 
     // Output to .obj file
     //outputToObject();
-
 }
 
 glm::mat4 findK(int triangleID){
@@ -441,6 +467,25 @@ void outputToDiredge(){
 
 void outputToObject(){
     ofstream out("out.obj");
+	for(size_t i = 0; i < vertices.size(); i++){
+		out << "v " << std::fixed << vertices[i][0] << " " << vertices[i][1] << " " << vertices[i][2] << endl;
+	}
+    for(size_t i = 0; i < vertexNormals.size(); i++){
+		out << "vn " << std::fixed << vertexNormals[i][0] << " " << vertexNormals[i][1] << " " << vertexNormals[i][2] << endl;
+	}
+	for(size_t i = 0; i < faces.size(); i+=3){
+		out << "f " 
+        << faces[i] + 1 << "//" << " "
+        << faces[i+1] + 1 << "//" << " "
+        << faces[i+2] + 1 << "//"
+        << endl;
+	}
+	out.close();
+}
+
+void outputToObject(int num){
+    std::string var = "outputs/out" + to_string(num) + ".obj";
+    ofstream out(var);
 	for(size_t i = 0; i < vertices.size(); i++){
 		out << "v " << std::fixed << vertices[i][0] << " " << vertices[i][1] << " " << vertices[i][2] << endl;
 	}
