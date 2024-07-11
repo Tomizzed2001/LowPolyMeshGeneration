@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define GRID_SIZE 0.1
+#define GRID_SIZE 0.5
 
 int main(int argc, char** argv)
 {
@@ -17,9 +17,7 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    vector<glm::vec3> vertices; // x y z
     vector<glm::vec3> normals;  // x y z directions
-    vector<glm::vec3> faces;    // vert vert vert
     float minPoint[3] = {0}, maxPoint[3] = {0};
     bool firstVertex = true;
 
@@ -91,6 +89,32 @@ int main(int argc, char** argv)
     }
     dField.close();
     
+    // Calculate face normals from scratch
+    fNormals.resize(faces.size());
+    for(size_t fID = 0; fID < faces.size(); fID++){
+        glm::vec3 AB = vertices[faces[fID].y] - vertices[faces[fID].x];
+        glm::vec3 AC = vertices[faces[fID].z] - vertices[faces[fID].x];
+        fNormals[fID] = glm::normalize(glm::cross(AB, AC));
+    }
+
+
+    // Calculate the edge normals from scratch
+    eNormals.resize(faces.size()*3);
+    for(size_t fID = 0; fID < faces.size(); fID++){
+        // AB edge
+        eNormals[fID * 3] = glm::normalize((findOtherHalfNormal(faces[fID].x, faces[fID].y) + fNormals[fID]) / float(2));
+        // BC edge
+        eNormals[fID * 3 + 1] = glm::normalize((findOtherHalfNormal(faces[fID].y, faces[fID].z) + fNormals[fID]) / float(2));
+        // CA edge
+        eNormals[fID * 3 + 2] = glm::normalize((findOtherHalfNormal(faces[fID].z, faces[fID].x) + fNormals[fID]) / float(2));
+    }
+
+    // Calculate the vertex normals from scratch
+    vNormals.resize(vertices.size());
+    for(size_t vID = 0; vID < vertices.size(); vID++){
+        vNormals[vID] = getVertexNormal(vID);
+    }
+
     //Round the points so the grid fits nicely
     cout << "Min Point: " << minPoint[0] << ", " << minPoint[1] << ", " << minPoint[2] << endl;
     cout << "Max Point: " << maxPoint[0] << ", " << maxPoint[1] << ", " << maxPoint[2] << endl;
@@ -140,22 +164,25 @@ int main(int argc, char** argv)
                         vertices[faces[faceID].z]
                     );
                     */
-                    glm::vec3 point = closestPointTriangle(
+                    float distance = closestPointTriangle(
                         glm::vec3(x,y,z),
                         vertices[faces[faceID].x],
                         vertices[faces[faceID].y], 
-                        vertices[faces[faceID].z]
+                        vertices[faces[faceID].z],
+                        faces[faceID].x,
+                        faces[faceID].y,
+                        faces[faceID].z,
+                        faceID
                     );
 
+                    /*
                     glm::vec3 AB = vertices[faces[faceID].y] - vertices[faces[faceID].x];
                     glm::vec3 AC = vertices[faces[faceID].z] - vertices[faces[faceID].x];
                     glm::vec3 n = glm::normalize(glm::cross(AB, AC));
                     float s = sign(glm::dot(point - glm::vec3(x,y,z), n));
-                    /*
                     if(s == 0){
                         s = sign(glm::dot(point - glm::vec3(x,y,z), n));
                     }
-                    */
                     float distance = s * glm::length(point - glm::vec3(x,y,z));
 
                     if( (x > -1.41 && x < -1.39) && (y > 1.19 && y < 1.21) && (z > -0.61 && z < -0.59) ){
@@ -165,6 +192,7 @@ int main(int argc, char** argv)
                             cout << glm::dot(point - glm::vec3(x,y,z), n) << endl;
                         }
                     }
+                    */
 
 
                     if(abs(distance) < abs(closestDistance)){
@@ -529,7 +557,7 @@ int sign(float value){
         return 1;
     }
     else{
-        return 0;
+        return -1;
     }
 }
 
@@ -549,7 +577,7 @@ float clampit(float v, float v1, float v2){
     }
 }
 
-glm::vec3 closestPointTriangle(glm::vec3 const& p, glm::vec3 const& a, glm::vec3 const& b, glm::vec3 const& c)
+float closestPointTriangle(glm::vec3 const& p, glm::vec3 const& a, glm::vec3 const& b, glm::vec3 const& c, unsigned int aID, unsigned int bID, unsigned int cID, unsigned int fID)
 {
     int mode = 0;
 
@@ -565,7 +593,15 @@ glm::vec3 closestPointTriangle(glm::vec3 const& p, glm::vec3 const& a, glm::vec3
         if(here){
             cout << mode << endl;
         }
-        return a; //#1
+
+        glm::vec3 point = a;
+
+        // Calculate the sign using vertex normal
+        glm::vec3 n = vNormals[aID];
+        float s = sign(glm::dot(point - p, n));
+        float d = glm::length(point - p);
+
+        return s * d;
     } 
         
 
@@ -578,7 +614,15 @@ glm::vec3 closestPointTriangle(glm::vec3 const& p, glm::vec3 const& a, glm::vec3
         if(here){
             cout << mode << endl;
         }
-        return b; //#2
+
+        glm::vec3 point = b; //#2
+
+        // Calculate the sign using vertex normal
+        glm::vec3 n = vNormals[bID];
+        float s = sign(glm::dot(point - p, n));
+        float d = glm::length(point - p);
+
+        return s * d;
     } 
 
     const glm::vec3 cp = p - c;
@@ -590,11 +634,16 @@ glm::vec3 closestPointTriangle(glm::vec3 const& p, glm::vec3 const& a, glm::vec3
         if(here){
             cout << mode << endl;
         }
-        return c; //#3
-    } 
 
-    // Calculate the normal of the triangle
-    glm::vec3 n = glm::normalize(glm::cross(ab, ac));
+        glm::vec3 point = c; //#3
+
+        // Calculate the sign using vertex normal
+        glm::vec3 n = vNormals[cID];
+        float s = sign(glm::dot(point - p, n));
+        float d = glm::length(point - p);
+
+        return s * d;
+    } 
 
     const float vc = d1 * d4 - d3 * d2;
     // If edge AB
@@ -608,7 +657,13 @@ glm::vec3 closestPointTriangle(glm::vec3 const& p, glm::vec3 const& a, glm::vec3
 
         const float v = d1 / (d1 - d3);
         glm::vec3 point = a + v * ab;
-        return a + v * ab; //#4
+        
+        // Calculate the sign using triangle normal
+        glm::vec3 n = fNormals[fID];
+        float s = sign(glm::dot(point - p, n));
+        float d = glm::length(point - p);
+
+        return s * d;
     }
         
     const float vb = d5 * d2 - d1 * d6;
@@ -616,34 +671,91 @@ glm::vec3 closestPointTriangle(glm::vec3 const& p, glm::vec3 const& a, glm::vec3
     if (vb <= 0.f && d2 >= 0.f && d6 <= 0.f)
     {
         mode = 5;
-        const float v = d2 / (d2 - d6);
         if(here){
             cout << mode << endl;
         }
-        return a + v * ac; //#5
+
+        const float v = d2 / (d2 - d6);
+        glm::vec3 point = a + v * ac; //#5
+
+        // Calculate the sign using triangle normal
+        //glm::vec3 n = fNormals[fID];
+        glm::vec3 n = eNormals[fID * 3];
+        float s = sign(glm::dot(point - p, n));
+        float d = glm::length(point - p);
+
+        return s * d;
     }
         
     const float va = d3 * d6 - d5 * d4;
     // If edge BC
     if (va <= 0.f && (d4 - d3) >= 0.f && (d5 - d6) >= 0.f)
     {
-            mode = 6;
-        const float v = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+        mode = 6;
         if(here){
             cout << mode << endl;
         }
-        return b + v * (c - b); //#6
+
+        const float v = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+        glm::vec3 point = b + v * (c - b); //#6
+
+        // Calculate the sign using triangle normal
+        //glm::vec3 n = fNormals[fID];
+        glm::vec3 n = eNormals[fID * 3 + 1];
+        float s = sign(glm::dot(point - p, n));
+        float d = glm::length(point - p);
+
+        return s * d;
     }
 
-        // Must be inside
+    // Must be inside
+    mode = 0;
+    if(here){
+        cout << mode << endl;
+    }
+
     const float denom = 1.f / (va + vb + vc);
     const float v = vb * denom;
     const float w = vc * denom;
-    mode = 0;
 
-        if(here){
-            cout << mode << endl;
+    glm::vec3 point = a + v * ab + w * ac; //#0
+
+    // Calculate the sign using triangle normal
+    //glm::vec3 n = fNormals[fID];
+    glm::vec3 n = eNormals[fID * 3 + 2];
+    float s = sign(glm::dot(point - p, n));
+    float d = glm::length(point - p);
+
+    return s * d;
+}
+
+glm::vec3 getVertexNormal(unsigned int vertexID){
+    vector<glm::vec3> triangleNormals;
+    // Find the triangles using the vertex
+    for(size_t fID = 0; fID < faces.size(); fID++){
+        if(faces[fID].x == vertexID || faces[fID].y == vertexID || faces[fID].z == vertexID){
+            triangleNormals.push_back(fNormals[fID]);
         }
+    }
+    // Average the triangle normals
+    glm::vec3 normal = glm::vec3(0,0,0);
+    for(glm::vec3 n: triangleNormals){
+        normal = normal + n;
+    }
+    normal = glm::normalize(normal / float(triangleNormals.size()));
 
-    return a + v * ab + w * ac; //#0
+    return normal;
+}
+
+glm::vec3 findOtherHalfNormal(unsigned int v0, unsigned int v1){
+    // Look for v1 to v0
+    for(size_t fID = 0; fID < faces.size(); fID++){
+        if((faces[fID].x == v1 && faces[fID].y == v0) || 
+            (faces[fID].y == v1 && faces[fID].z == v0) ||
+            (faces[fID].z == v1 && faces[fID].x == v0)
+        ){
+            return fNormals[fID];
+        }
+    }
+    return glm::vec3(0);
 }

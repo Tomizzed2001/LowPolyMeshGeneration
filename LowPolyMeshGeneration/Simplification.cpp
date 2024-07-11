@@ -51,7 +51,7 @@ int main(int argc, char** argv){
 
     outputToObject(0);
 
-    return 0;
+    //return 0;
 
     // Calculate the Quadric Error Metric for each half-edge
     // Step 1: Find Q for each vertex
@@ -103,18 +103,18 @@ int main(int argc, char** argv){
         unsigned int edge = collapseOrder.top().second;
         unsigned int otherEdge = otherHalf[collapseOrder.top().second];
 
-        cout << "Edge: " << edge << " Other Edge: " << otherEdge << endl;
+        //cout << "Edge: " << edge << " Other Edge: " << otherEdge << endl;
 
         // Get the vertices involved
         unsigned int keptVertex = faces[edge]; 
         unsigned int goneVertex = faces[otherEdge];
 
-        cout << "Keep Vertex: " << keptVertex + 1 << " Remove Vertex: " << goneVertex + 1 << endl;
+        //cout << "Keep Vertex: " << keptVertex + 1 << " Remove Vertex: " << goneVertex + 1 << endl;
 
         // Check that the second triangle to be removed is not the final face
         // Remove the faces
         if ((otherEdge / 3) * 3 == faces.size()-3){
-            cout << "OTHER IS ON THE FINAL FACE" << endl;
+            //cout << "OTHER IS ON THE FINAL FACE" << endl;
             removeFace(otherEdge / 3);
             removeFace(edge / 3);
         }
@@ -349,7 +349,7 @@ void removeFace(unsigned int triangleID){
                     secondIndex = i;
                     // Check the edge isnt the same but swapped
                     if(secondIndex == swap.first){
-                        cout << "CHECK" << endl;
+                        //cout << "CHECK" << endl;
                         break;
                     }
                     pairsFound++;
@@ -517,4 +517,3 @@ void outputToObject(int num){
 	}
 	out.close();
 }
-

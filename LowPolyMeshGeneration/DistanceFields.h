@@ -13,6 +13,12 @@
 #include <iomanip>
 #include "glm/glm.hpp"
 
+std::vector<glm::vec3> vertices; // x y z
+std::vector<glm::vec3> faces;
+std::vector<glm::vec3> vNormals;
+std::vector<glm::vec3> fNormals;
+std::vector<glm::vec3> eNormals;
+
 std::vector<glm::mat4> transforms;
 std::vector<std::vector<glm::vec2>> transformedFaces; // A, B, C, nAB, nBC, nCA
 std::vector<glm::vec3> faceNormals;
@@ -38,4 +44,9 @@ int sign(float value);
 
 float clampit(float v, float v1, float v2);
 
-glm::vec3 closestPointTriangle(glm::vec3 const& p, glm::vec3 const& a, glm::vec3 const& b, glm::vec3 const& c);
+float closestPointTriangle(glm::vec3 const& p, glm::vec3 const& a, glm::vec3 const& b, glm::vec3 const& c, 
+    unsigned int aID, unsigned int bID, unsigned int cID, unsigned int fID);
+
+glm::vec3 getVertexNormal(unsigned int vertexID);
+
+glm::vec3 findOtherHalfNormal(unsigned int v0, unsigned int v1);
