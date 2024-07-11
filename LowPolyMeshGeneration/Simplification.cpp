@@ -51,7 +51,7 @@ int main(int argc, char** argv){
 
     outputToObject(0);
 
-    //return 0;
+    return 0;
 
     // Calculate the Quadric Error Metric for each half-edge
     // Step 1: Find Q for each vertex

@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define GRID_SIZE 0.5
+#define GRID_SIZE 0.1
 
 int main(int argc, char** argv)
 {
@@ -144,7 +144,7 @@ int main(int argc, char** argv)
 		for (float yID = 0, y = minPoint[1]; yID < ySize; yID++, y+=GRID_SIZE) {
 			for (float zID = 0, z = minPoint[2]; zID < zSize; zID++, z+=GRID_SIZE) {
                 float closestDistance = 1000;
-                if( (x > -1.41 && x < -1.39) && (y > 1.19 && y < 1.21) && (z > -0.61 && z < -0.59) ){
+                if( (x > -1.31 && x < -1.29) && (y > -0.51 && y < -0.49) && (z > -0.51 && z < -0.49) ){
                     cout << "Setting true" << endl;
                     here = true;
                 }
@@ -184,15 +184,15 @@ int main(int argc, char** argv)
                         s = sign(glm::dot(point - glm::vec3(x,y,z), n));
                     }
                     float distance = s * glm::length(point - glm::vec3(x,y,z));
+                    */
 
-                    if( (x > -1.41 && x < -1.39) && (y > 1.19 && y < 1.21) && (z > -0.61 && z < -0.59) ){
-                        if(abs(distance) < 0.8){
-                            cout << "D: " << distance << " Normal: " << glm::to_string(n) << " G-C: " << glm::to_string(point - glm::vec3(x,y,z)) << endl;
+                    if( (x > -1.31 && x < -1.29) && (y > -0.51 && y < -0.49) && (z > -0.51 && z < -0.49) ){
+                        if(abs(distance) < 0.5){
+                            cout << "D: " << distance << endl;
                             cout << "Vertices: " << glm::to_string(vertices[faces[faceID].x]) << glm::to_string(vertices[faces[faceID].y]) << glm::to_string(vertices[faces[faceID].z]) << endl;
-                            cout << glm::dot(point - glm::vec3(x,y,z), n) << endl;
+                            //cout << glm::dot(point - glm::vec3(x,y,z), n) << endl;
                         }
                     }
-                    */
 
 
                     if(abs(distance) < abs(closestDistance)){
@@ -659,7 +659,7 @@ float closestPointTriangle(glm::vec3 const& p, glm::vec3 const& a, glm::vec3 con
         glm::vec3 point = a + v * ab;
         
         // Calculate the sign using triangle normal
-        glm::vec3 n = fNormals[fID];
+        glm::vec3 n = eNormals[fID * 3];
         float s = sign(glm::dot(point - p, n));
         float d = glm::length(point - p);
 
@@ -680,7 +680,7 @@ float closestPointTriangle(glm::vec3 const& p, glm::vec3 const& a, glm::vec3 con
 
         // Calculate the sign using triangle normal
         //glm::vec3 n = fNormals[fID];
-        glm::vec3 n = eNormals[fID * 3];
+        glm::vec3 n = eNormals[fID * 3 + 2];
         float s = sign(glm::dot(point - p, n));
         float d = glm::length(point - p);
 
@@ -722,7 +722,7 @@ float closestPointTriangle(glm::vec3 const& p, glm::vec3 const& a, glm::vec3 con
 
     // Calculate the sign using triangle normal
     //glm::vec3 n = fNormals[fID];
-    glm::vec3 n = eNormals[fID * 3 + 2];
+    glm::vec3 n = fNormals[fID];
     float s = sign(glm::dot(point - p, n));
     float d = glm::length(point - p);
 
