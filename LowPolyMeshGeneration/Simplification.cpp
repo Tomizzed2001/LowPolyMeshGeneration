@@ -49,6 +49,10 @@ int main(int argc, char** argv){
     }
     inFile.close();
 
+    outputToObject(0);
+
+    return 0;
+
     // Calculate the Quadric Error Metric for each half-edge
     // Step 1: Find Q for each vertex
     quadrics.resize(vertices.size());
@@ -73,14 +77,20 @@ int main(int argc, char** argv){
 
     priority_queue<pair<float, int>, vector<pair<float, int>>, greater<pair<float, int>>> testOrder = collapseOrder;
 
+    // DEBUG COLLAPSE ORDER / ERROR
     ofstream out("errors/error0.error");
     while(! testOrder.empty()){
         out << testOrder.top().first << " " << testOrder.top().second << endl;
         testOrder.pop();
     }
     out.close();
-    /*
-    */
+    // DEBUG OTHERHALVES
+    std::string var = "otherHalves/otherHalf0.oh";
+    ofstream outt(var);
+    for(size_t i = 0; i < otherHalf.size(); i++){
+        outt << otherHalf[i] << endl;
+    }
+    outt.close();
 
     vector<unsigned int> removedVertices;
 
@@ -88,13 +98,6 @@ int main(int argc, char** argv){
 
     // Complete the collapse in the order of lowest error cost first
     while((faces.size() / 3) > DESIRED_TRIANGLE_COUNT || collapseOrder.empty()){
-        std::string var = "otherHalves/otherHalf" + to_string(counter-1) + ".oh";
-        ofstream outt(var);
-        for(size_t i = 0; i < otherHalf.size(); i++){
-            outt << otherHalf[i] << endl;
-        }
-        outt.close();
-
         cout << "Run: " << counter << endl;
         // Get the edge to collapse
         unsigned int edge = collapseOrder.top().second;
@@ -119,7 +122,6 @@ int main(int argc, char** argv){
             removeFace(edge / 3);
             removeFace(otherEdge / 3);
         }
-        
 
         // Replace all instances of the goneVertex with the keptVertex
         for(size_t eID = 0; eID < faces.size(); eID++){
@@ -130,14 +132,18 @@ int main(int argc, char** argv){
 
         removedVertices.push_back(goneVertex);
 
+
         // Update half edges to be merged edges
         // Final 6 half edges no longer exist
         unsigned int newEdgeNum = otherHalf.size() - 6;
         otherHalf.erase(otherHalf.end()-6, otherHalf.end());
         for(unsigned int eID = 0; eID < newEdgeNum; eID++){
+            /*
             if(otherHalf[eID] >= newEdgeNum){
                 findOtherHalf(eID);
             }
+            */
+            findOtherHalf(eID);
         }
 
         // Update the vertices in the new 1-ring of keptVertex
@@ -177,7 +183,14 @@ int main(int argc, char** argv){
             collapseOrder.push(make_pair(errorCosts[i], i));
         }
 
-
+        // DEBUG OTHERHALVES
+        std::string var = "otherHalves/otherHalf" + to_string(counter) + ".oh";
+        ofstream outt(var);
+        for(size_t i = 0; i < otherHalf.size(); i++){
+            outt << otherHalf[i] << endl;
+        }
+        outt.close();
+        // DEBUG COLLAPSE ORDER / ERROR
         testOrder = collapseOrder;
         var = "errors/error" + to_string(counter) + ".error";
         ofstream out(var);
@@ -186,19 +199,19 @@ int main(int argc, char** argv){
             testOrder.pop();
         }
         out.close();
-        /*
-        */
-
+        // DEBUG OBJECT FILE
         outputToObject(counter);
         counter++;
 
+        /*
         if(counter == 18){
             break;
         }
+        */
     }
 
     //outputToObject();
-
+    //cout << "OUTPUT" << endl;
 
     //cout << "Removing vertices" << endl;
     // Remove un-used vertices and cascade the changes
@@ -250,7 +263,7 @@ int main(int argc, char** argv){
     }
 
     // Output to .obj file
-    //outputToObject();
+    outputToObject();
 }
 
 glm::mat4 findK(int triangleID){
@@ -336,6 +349,7 @@ void removeFace(unsigned int triangleID){
                     secondIndex = i;
                     // Check the edge isnt the same but swapped
                     if(secondIndex == swap.first){
+                        cout << "CHECK" << endl;
                         break;
                     }
                     pairsFound++;
@@ -442,6 +456,8 @@ void updateError(unsigned int edgeID){
 
     // Join the quadrics and calculate the error vQv
     errorCosts[edgeID] = glm::length( v1 * (Q1 + Q2) * v1 );
+    //glm::vec4 quadraticError =  v1 * (Q1 + Q2) * v1;
+    //errorCosts[edgeID] = (quadraticError.x * v1.x) + (quadraticError.y * v1.y) + (quadraticError.z * v1.z) + quadraticError[3];
 
     return;
 }
