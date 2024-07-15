@@ -28,24 +28,11 @@ bool here = false;
 
 void fitToGrid(float *point, bool isMin);
 
-glm::mat4 getTransformMatrix(glm::vec3 A, glm::vec3 B, glm::vec3 C);
+float distanceToTriangle(glm::vec3 P, glm::vec3 A, glm::vec3 B, glm::vec3 C, unsigned int faceID);
 
-void preComputeFace(int faceID, glm::mat4 transform, glm::vec3 A, glm::vec3 B, glm::vec3 C);
-
-float distToTriangle(int faceID, glm::vec3 P, glm::vec3 A, glm::vec3 B, glm::vec3 C);
-
-float distance3D(glm::vec3 P, glm::vec3 A, glm::vec3 B, glm::vec3 C);
-
-float distanceToEdge(glm::vec3 P, glm::vec3 A, glm::vec3 B, glm::vec3 N);
-
-float dist(glm::vec3 P, glm::vec3 A, glm::vec3 B);
+float distanceToEdge(glm::vec3 P, glm::vec3 A, glm::vec3 B);
 
 int sign(float value);
-
-float clampit(float v, float v1, float v2);
-
-float closestPointTriangle(glm::vec3 const& p, glm::vec3 const& a, glm::vec3 const& b, glm::vec3 const& c, 
-    unsigned int aID, unsigned int bID, unsigned int cID, unsigned int fID);
 
 glm::vec3 getVertexNormal(unsigned int vertexID);
 
