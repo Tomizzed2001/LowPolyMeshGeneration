@@ -1,0 +1,87 @@
+Cube1: 7,9,10
+Point: 7,9,10 Distance: 0.07735		1
+Point: 7,9,11 Distance: -0.03035	0
+Point: 7,10,10 Distance: 0.02575	1
+Point: 7,10,11 Distance: -0.00905	0
+Point: 8,9,10 Distance: 0.06745		1
+Point: 8,9,11 Distance: -0.02375	0
+Point: 8,10,10 Distance: -0.00865	0
+Point: 8,10,11 Distance: 0.03595	1
+149	6,  10,   5,     9,   1,   4,     1,   7,   4,     7,   1,   3
+
+Cube2: 7,10,10
+Point: 7,10,10 Distance: 0.02575
+Point: 7,10,11 Distance: -0.00905
+Point: 7,11,10 Distance: -0.11995
+Point: 7,11,11 Distance: -0.11025
+Point: 8,10,10 Distance: -0.00865
+Point: 8,10,11 Distance: 0.03595
+Point: 8,11,10 Distance: -0.12435
+Point: 8,11,11 Distance: -0.08535
+33
+
+Cube3: 8,9,10
+Point: 8,9,10 Distance: 0.06745
+Point: 8,9,11 Distance: -0.02375
+Point: 8,10,10 Distance: -0.00865
+Point: 8,10,11 Distance: 0.03595
+Point: 9,9,10 Distance: 0.00645
+Point: 9,9,11 Distance: -0.01625
+Point: 9,10,10 Distance: -0.04195
+Point: 9,10,11 Distance: -0.10985
+25
+
+Cube4: 8,10,10
+Point: 8,10,10 Distance: -0.00865
+Point: 8,10,11 Distance: 0.03595
+Point: 8,11,10 Distance: -0.12435
+Point: 8,11,11 Distance: -0.08535
+Point: 9,10,10 Distance: -0.04195
+Point: 9,10,11 Distance: -0.10985
+Point: 9,11,10 Distance: -0.17205
+Point: 9,11,11 Distance: -0.18115
+2
+
+Cube5: 9,9,10
+Point: 9,9,10 Distance: 0.00645
+Point: 9,9,11 Distance: -0.01625
+Point: 9,10,10 Distance: -0.04195
+Point: 9,10,11 Distance: -0.10985
+Point: 10,9,10 Distance: 0.06745
+Point: 10,9,11 Distance: -0.02375
+Point: 10,10,10 Distance: -0.00865
+Point: 10,10,11 Distance: 0.03595
+145
+
+Cube6: 9,10,10
+Point: 9,10,10 Distance: -0.04195
+Point: 9,10,11 Distance: -0.10985
+Point: 9,11,10 Distance: -0.17205
+Point: 9,11,11 Distance: -0.18115
+Point: 10,10,10 Distance: -0.00865
+Point: 10,10,11 Distance: 0.03595
+Point: 10,11,10 Distance: -0.12435
+Point: 10,11,11 Distance: -0.08535
+32
+
+Cube7: 10,9,10
+Point: 10,9,10 Distance: 0.06745	1
+Point: 10,9,11 Distance: -0.02375	0
+Point: 10,10,10 Distance: -0.00865	0
+Point: 10,10,11 Distance: 0.03595	1
+Point: 11,9,10 Distance: 0.07735	1	
+Point: 11,9,11 Distance: -0.03035	0	
+Point: 11,10,10 Distance: 0.02575	1
+Point: 11,10,11 Distance: -0.00905	0
+89	0,   1,   9,    10,   2,   5,     5,   2,   3,     3,   7,   5
+
+Cube8: 10,10,10
+Point: 10,10,10 Distance: -0.00865
+Point: 10,10,11 Distance: 0.03595
+Point: 10,11,10 Distance: -0.12435
+Point: 10,11,11 Distance: -0.08535
+Point: 11,10,10 Distance: 0.02575
+Point: 11,10,11 Distance: -0.00905
+Point: 11,11,10 Distance: -0.11995
+Point: 11,11,11 Distance: -0.11025
+18
