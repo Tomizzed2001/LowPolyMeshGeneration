@@ -126,36 +126,11 @@ int main(int argc, char** argv)
 
     // Loop through all points in the scalar field and get the distance 
     // from them to the closest triangle
-    int id;
     for (float xID = 0, x = minPoint[0]; xID < xSize; xID++, x+=GRID_SIZE) {
 		for (float yID = 0, y = minPoint[1]; yID < ySize; yID++, y+=GRID_SIZE) {
 			for (float zID = 0, z = minPoint[2]; zID < zSize; zID++, z+=GRID_SIZE) {
                 float closestDistance = 1000;
-                if(xID == 4 && yID == 1 && zID == 0){
-                    //cout << "Setting true" << endl;
-                    //here = true;
-                }
                 for(size_t faceID = 0; faceID < faces.size(); faceID++){
-
-                    /*
-                    float distance = closestPointTriangle(
-                        glm::vec3(x,y,z),
-                        vertices[faces[faceID].x],
-                        vertices[faces[faceID].y], 
-                        vertices[faces[faceID].z],
-                        faces[faceID].x,
-                        faces[faceID].y,
-                        faces[faceID].z,
-                        faceID
-                    );
-
-                    if(xID == 4 && yID == 1 && zID == 0){
-                        cout << "New Point: " << x << ", " << y << ", " << z << " Triangle: " << faceID << endl;
-                        cout << "Vertices: " << glm::to_string(vertices[faces[faceID].x]) << glm::to_string(vertices[faces[faceID].y]) << glm::to_string(vertices[faces[faceID].z]) << endl;
-                        cout << "D: " << distance << endl;
-                    }      
-                    */
-
                     float distance = distanceToTriangle(
                         glm::vec3(x,y,z),               // Point
                         vertices[faces[faceID].x],      // Vertex A
@@ -166,7 +141,6 @@ int main(int argc, char** argv)
 
                     if(abs(distance) < abs(closestDistance)){
                         closestDistance = distance;
-                        id = faceID;
                     }
                 }
                 // Remove any "negative" zeros

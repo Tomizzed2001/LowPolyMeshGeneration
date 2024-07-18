@@ -51,169 +51,148 @@ int main(int argc, char** argv){
 
     outputToObject(0);
 
-    return 0;
+    ///////////////////////////////////////////// TEST THE EDGE COLLAPSE ////////////////////////////////////////////
+    /*
+    // Get the edge to collapse
+    unsigned int edge = 0;
+    unsigned int otherEdge = otherHalf[edge];
 
-    // Calculate the Quadric Error Metric for each half-edge
-    // Step 1: Find Q for each vertex
-    quadrics.resize(vertices.size());
-    for(size_t vID = 0; vID < vertices.size(); vID++){
-        updateQ(vID);
+    //cout << "Edge: " << edge << " Other Edge: " << otherEdge << endl;
+
+    // Get the vertices involved
+    unsigned int keptVertex = faces[edge]; 
+    unsigned int goneVertex = faces[otherEdge];
+
+    //cout << "Keep Vertex: " << keptVertex << " Remove Vertex: " << goneVertex << endl;
+
+    if ((otherEdge / 3) * 3 == faces.size()-3){
+        cout << "OTHER IS ON THE FINAL FACE. First Face: " << otherEdge / 3 << " Second Face: " << edge / 3 << endl;
+        removeFaceNew(otherEdge / 3, 1);
+        removeFaceNew(edge / 3, 2);
     }
-    
-    // Step 2: Find error cost for each valid half edge
-    errorCosts.resize(otherHalf.size());
-    for(size_t ohID = 0; ohID < otherHalf.size(); ohID++){
-        updateError(ohID);
+    else{
+        cout << "First Face: " << edge / 3 << " Second Face: " << otherEdge / 3 << endl;
+        removeFaceNew(edge / 3, 1);
+        removeFaceNew(otherEdge / 3, 2);
     }
 
-    // Step 3: Place otherhalf IDs on a heap ordererd by error cost.
-    priority_queue<pair<float, int>, vector<pair<float, int>>, greater<pair<float, int>>> collapseOrder;
-    for(size_t i = 0; i < errorCosts.size(); i++){
-        if(errorCosts[i] == -1){
-            continue;
+    vector<int> firstEdge, secondEdge; 
+
+    // Replace all instances of the goneVertex with the keptVertex
+    for(size_t eID = 0; eID < faces.size(); eID++){
+        // Check for removed vertex
+        if(faces[eID] == goneVertex){
+            faces[eID] = keptVertex;
         }
-        collapseOrder.push(make_pair(errorCosts[i], i));
+        // Check for removed half edge on the first removed face
+        if(otherHalf[eID] == -1){
+            firstEdge.push_back(eID);
+        }
+        else if(otherHalf[eID] == -2){
+            secondEdge.push_back(eID);
+        }
     }
 
-    priority_queue<pair<float, int>, vector<pair<float, int>>, greater<pair<float, int>>> testOrder = collapseOrder;
+    otherHalf[firstEdge[0]] = firstEdge[1];
+    otherHalf[firstEdge[1]] = firstEdge[0];
+    otherHalf[secondEdge[0]] = secondEdge[1];
+    otherHalf[secondEdge[1]] = secondEdge[0];
 
-    // DEBUG COLLAPSE ORDER / ERROR
-    ofstream out("errors/error0.error");
-    while(! testOrder.empty()){
-        out << testOrder.top().first << " " << testOrder.top().second << endl;
-        testOrder.pop();
+    removedVertices.push_back(goneVertex);
+
+    outputToObject(1);
+
+    outputToDiredge();
+
+    return 0;
+    */
+    ///////////////////////////////////////////// TEST THE EDGE COLLAPSE ////////////////////////////////////////////
+
+    /////////////////////////////////////////////// COLLAPSE ORDERING ///////////////////////////////////////////////
+
+
+    // Make a vector of the collapse order as a set of pairs <error, edgeID>
+    vector<pair<float, int>> collapseOrder;
+    for(size_t ohID = 0; ohID < otherHalf.size(); ohID++){
+        // Get the error cost for a valid half edge
+        float lengthOfEdge = getEdgeLength(ohID);
+        if(lengthOfEdge != -1){
+            collapseOrder.push_back(make_pair(lengthOfEdge, ohID));
+        }
     }
-    out.close();
-    // DEBUG OTHERHALVES
-    std::string var = "otherHalves/otherHalf0.oh";
-    ofstream outt(var);
-    for(size_t i = 0; i < otherHalf.size(); i++){
-        outt << otherHalf[i] << endl;
+
+    for(size_t i = 0; i < collapseOrder.size(); i++){
+        cout << collapseOrder[i].first << " " << collapseOrder[i].second << endl;
     }
-    outt.close();
+
+    // Sort with smallest length first
+    sort(collapseOrder.begin(), collapseOrder.end());
+
+
+    /////////////////////////////////////////////// COLLAPSE ORDERING ///////////////////////////////////////////////
+
 
     vector<unsigned int> removedVertices;
-
     int counter = 1;
 
+    cout << "Collapsing edges" << endl;
     // Complete the collapse in the order of lowest error cost first
     while((faces.size() / 3) > DESIRED_TRIANGLE_COUNT || collapseOrder.empty()){
         cout << "Run: " << counter << endl;
         // Get the edge to collapse
-        unsigned int edge = collapseOrder.top().second;
-        unsigned int otherEdge = otherHalf[collapseOrder.top().second];
-
-        //cout << "Edge: " << edge << " Other Edge: " << otherEdge << endl;
+        unsigned int edge = 0;
+        unsigned int otherEdge = otherHalf[edge];
 
         // Get the vertices involved
         unsigned int keptVertex = faces[edge]; 
         unsigned int goneVertex = faces[otherEdge];
 
-        //cout << "Keep Vertex: " << keptVertex + 1 << " Remove Vertex: " << goneVertex + 1 << endl;
-
-        // Check that the second triangle to be removed is not the final face
-        // Remove the faces
         if ((otherEdge / 3) * 3 == faces.size()-3){
-            //cout << "OTHER IS ON THE FINAL FACE" << endl;
-            removeFace(otherEdge / 3);
-            removeFace(edge / 3);
+            removeFaceNew(otherEdge / 3, 1);
+            removeFaceNew(edge / 3, 2);
         }
         else{
-            removeFace(edge / 3);
-            removeFace(otherEdge / 3);
+            removeFaceNew(edge / 3, 1);
+            removeFaceNew(otherEdge / 3, 2);
         }
+
+        vector<int> firstEdge, secondEdge; 
 
         // Replace all instances of the goneVertex with the keptVertex
         for(size_t eID = 0; eID < faces.size(); eID++){
+            // Check for removed vertex
             if(faces[eID] == goneVertex){
                 faces[eID] = keptVertex;
             }
+            // Check for removed half edge on the first removed face
+            if(otherHalf[eID] == -1){
+                firstEdge.push_back(eID);
+            }
+            else if(otherHalf[eID] == -2){
+                secondEdge.push_back(eID);
+            }
         }
 
+        // Update the other halves for the kept edges of the removed triangles
+        otherHalf[firstEdge[0]] = firstEdge[1];
+        otherHalf[firstEdge[1]] = firstEdge[0];
+        otherHalf[secondEdge[0]] = secondEdge[1];
+        otherHalf[secondEdge[1]] = secondEdge[0];
+
+        // Add removed vertex to an array so the hole set can be updated at the end
         removedVertices.push_back(goneVertex);
 
-
-        // Update half edges to be merged edges
-        // Final 6 half edges no longer exist
-        unsigned int newEdgeNum = otherHalf.size() - 6;
-        otherHalf.erase(otherHalf.end()-6, otherHalf.end());
-        for(unsigned int eID = 0; eID < newEdgeNum; eID++){
-            /*
-            if(otherHalf[eID] >= newEdgeNum){
-                findOtherHalf(eID);
-            }
-            */
-            findOtherHalf(eID);
-        }
-
-        // Update the vertices in the new 1-ring of keptVertex
-        std::unordered_set<unsigned int> aOneRing = findOneRing(keptVertex);
-        updateQ(keptVertex);
-        for(auto id: aOneRing) {
-            updateQ(id);
-        }
-
-        // Update the error costs for any edge involving keptVertex
-        vector<unsigned int> changedEdges;
-        for(unsigned int eID = 0; eID < faces.size(); eID++){
-            if(faces[eID] != keptVertex){
-                continue;
-            }
-            else{
-                if (eID % 3 == 0){
-                    changedEdges.push_back(eID);
-                    changedEdges.push_back(eID + 2);
-                }
-                else{
-                    changedEdges.push_back(eID);
-                    changedEdges.push_back(eID-1);
-                }
-            }
-        }
-        for(unsigned int eID = 0; eID < changedEdges.size(); eID++){
-            updateError(changedEdges[eID]);
-        }
-
         // Re-Generate Collapse Order
-        collapseOrder = priority_queue<pair<float, int>, vector<pair<float, int>>, greater<pair<float, int>>>();
-        for(size_t i = 0; i < errorCosts.size(); i++){
-            if(errorCosts[i] == -1){
-                continue;
-            }
-            collapseOrder.push(make_pair(errorCosts[i], i));
-        }
 
-        // DEBUG OTHERHALVES
-        std::string var = "otherHalves/otherHalf" + to_string(counter) + ".oh";
-        ofstream outt(var);
-        for(size_t i = 0; i < otherHalf.size(); i++){
-            outt << otherHalf[i] << endl;
-        }
-        outt.close();
-        // DEBUG COLLAPSE ORDER / ERROR
-        testOrder = collapseOrder;
-        var = "errors/error" + to_string(counter) + ".error";
-        ofstream out(var);
-        while(! testOrder.empty()){
-            out << testOrder.top().first << " " << testOrder.top().second << endl;
-            testOrder.pop();
-        }
-        out.close();
         // DEBUG OBJECT FILE
         outputToObject(counter);
         counter++;
-
-        /*
-        if(counter == 18){
-            break;
-        }
-        */
     }
 
     //outputToObject();
     //cout << "OUTPUT" << endl;
 
-    //cout << "Removing vertices" << endl;
+    cout << "Removing vertices" << endl;
     // Remove un-used vertices and cascade the changes
     for(size_t i = 0; i < removedVertices.size(); i++){
         // Remove the vertex from vertices
@@ -232,6 +211,7 @@ int main(int argc, char** argv){
         }
     }
 
+    cout << "Producing Normals" << endl;
     // Produce the smooth vertex normals for the output
     for(size_t vID = 0; vID < vertices.size(); vID++){
         vector<glm::vec3> triangleNormals;
@@ -262,6 +242,7 @@ int main(int argc, char** argv){
         //break;
     }
 
+    cout << "Complete" << endl;
     // Output to .obj file
     outputToObject();
 }
@@ -322,6 +303,7 @@ void removeFace(unsigned int triangleID){
     unsigned int faceID = triangleID * 3;
     // Check that its not the last triangle in the array and swap if not
     if (faceID != faces.size()-3){
+        cout << "NOT LAST TRIANGLE" << endl;
         vector<pair<unsigned int, unsigned int>> swapMap;
         // Swap vertices
         swapMap.push_back(make_pair(faces[faceID], faces[faces.size()-3]));
@@ -331,8 +313,15 @@ void removeFace(unsigned int triangleID){
         swapMap.push_back(make_pair(faces[faceID+2], faces[faces.size()-1]));
         faces[faceID+2] = faces[faces.size()-1];
 
+        cout << "OH: " << otherHalf[faces.size()-3] << endl;
+        cout << "OH: " << otherHalf[faces.size()-2] << endl;
+        cout << "OH: " << otherHalf[faces.size()-1] << endl;
+
+        outputToDiredge();
+
         // Update otherHalf to match swapped faces
         for(pair<unsigned int, unsigned int> swap: swapMap){
+            cout << swap.first << " " << swap.second << endl;
             int pairsFound = 0;
             unsigned int firstIndex, secondIndex;
             for(size_t i = 0; i < otherHalf.size() || pairsFound == 2; i++){
@@ -374,6 +363,76 @@ void removeFace(unsigned int triangleID){
     faces.pop_back();
 
     return;
+}
+
+void removeFaceNew(unsigned int triangleID, int faceNum){
+    int faceID = triangleID * 3;
+    //cout << "FaceID: " << faceID << endl;
+    // Check that its not the last triangle in the array
+    if (faceID != int(faces.size()-3)){
+        // Check to see if the triangle selected and final triangle share an edge
+        for(int i = 0; i < 3; i++){
+            if(otherHalf[faceID+i] >= int(faces.size()-3)){
+                //cout << "Sharing edges:" << faceID+i << otherHalf[faceID+i] << endl;
+                int face1Pos = i - abs(int(otherHalf[faceID+i] - (otherHalf.size() - 1)));
+                int orderOfRotation[3];
+                if (face1Pos == 0){
+                    // No need to rotate
+                    break;
+                }
+                // Rotate the triangle so the shared edge aligns x y z = y z x
+                else if(face1Pos == -1 || face1Pos == 2){
+                    orderOfRotation[0] = faceID + 1;
+                    orderOfRotation[1] = faceID + 2;
+                    orderOfRotation[2] = faceID + 0;
+                }
+                // Rotate the triangle so the shared edge aligns x y z = z x y
+                else{
+                    orderOfRotation[0] = faceID + 2;
+                    orderOfRotation[1] = faceID + 0;
+                    orderOfRotation[2] = faceID + 1;
+                }
+                // Rotate
+                unsigned int temp[3] = {faces[orderOfRotation[0]], faces[orderOfRotation[1]], faces[orderOfRotation[2]]};
+                faces[faceID] = temp[0];
+                faces[faceID+1] = temp[1];
+                faces[faceID+2] = temp[2];
+            }
+        }
+
+        // Swap the faces
+        faces[faceID] = faces[faces.size()-3];
+        faces[faceID+1] = faces[faces.size()-2];
+        faces[faceID+2] = faces[faces.size()-1];
+
+        for(int i = 0; i < 3; i++){
+            if(faceID+i == otherHalf[otherHalf.size()-(3-i)]){
+                otherHalf[faceID+i] = -1 * faceNum;
+            }
+            else{
+                if(otherHalf[faceID+i] != -1){
+                    //cout << "Otherhalf: " << otherHalf[faceID+i] << " = -1 " << endl;
+                    otherHalf[otherHalf[faceID+i]] = -1 * faceNum;
+                }
+                otherHalf[faceID+i] = otherHalf[otherHalf.size()-(3-i)];
+                otherHalf[otherHalf[faceID+i]] = faceID+i;
+            }
+        }
+
+    }
+    else{
+        otherHalf[otherHalf[faces.size()-3]] = -1 * faceNum;
+        otherHalf[otherHalf[faces.size()-2]] = -1 * faceNum;
+        otherHalf[otherHalf[faces.size()-1]] = -1 * faceNum;
+    }
+
+    // Remove the final face
+    faces.pop_back();
+    faces.pop_back();
+    faces.pop_back();
+    otherHalf.pop_back();
+    otherHalf.pop_back();
+    otherHalf.pop_back();
 }
 
 void findOtherHalf(unsigned int edgeID){
@@ -463,6 +522,7 @@ void updateError(unsigned int edgeID){
 }
 
 void outputToDiredge(){
+    cout << "Dumping to dump.diredge" << endl;
     // Write the output to a directed edge file format
 	ofstream out("dump.diredge");
 	for(size_t i = 0; i < vertices.size(); i++){
@@ -516,4 +576,33 @@ void outputToObject(int num){
         << endl;
 	}
 	out.close();
+}
+
+float getEdgeLength(unsigned int edgeID){
+    // Check if it is a "valid" collapse
+    std::unordered_set<unsigned int> aOneRing = findOneRing(faces[edgeID]);
+    std::unordered_set<unsigned int> bOneRing = findOneRing(faces[otherHalf[edgeID]]);
+    int intersectionCount = 0;
+    for(auto id: aOneRing) {
+        if(bOneRing.find(id) != bOneRing.end()){
+            intersectionCount++;
+        }
+    }
+    // If the one ring of both vertices intersect at more than 2 vertices it is an invalid operation
+    if (intersectionCount > 2){
+        // Invalid collapse operation
+        return -1;
+    }
+
+    // Get the vertices
+    glm::vec3 A = vertices[faces[edgeID]];
+    glm::vec3 B;
+    if(edgeID % 3 == 2){
+        B = vertices[faces[edgeID-2]];
+    }
+    else{
+        B = vertices[faces[edgeID+1]];
+    }
+
+    return glm::length(B-A);
 }

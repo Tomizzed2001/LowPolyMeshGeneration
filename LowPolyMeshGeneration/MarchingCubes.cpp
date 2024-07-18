@@ -3,6 +3,8 @@
 #include "MarchingCubes.h"
 #include "mc_tables.h"
 
+#include <glm/gtx/string_cast.hpp>
+
 using namespace std;
 
 #define ISOVALUE 0
@@ -36,10 +38,17 @@ int main(int argc, char** argv){
 	float distA;
 	float distB;
 
+	//xDimension = 20;
+	//yDimension = 14;
+	//zDimension = 14;
+
+
 	// March through the distance field
+	// TEST CASE IS 16 15 18
 	for(int x = 0; x < xDimension - 1; x++){
 		for(int y = 0; y < yDimension - 1; y++){
 			for(int z = 0; z < zDimension - 1; z++){
+				//cout << "New Cube" << endl;
 				// Get the state of the cube
 				int caseNum = 0;
 				for(int i = 0; i < 8; i++){
@@ -47,19 +56,25 @@ int main(int argc, char** argv){
 					if (scalarField[x+vertPos[i][0]][y+vertPos[i][1]][z+vertPos[i][2]] >= ISOVALUE) {
 						caseNum += pow(2, i);
 					}
+					//cout << "Point: " << x+vertPos[i][0] << "," << y+vertPos[i][1] << "," << z+vertPos[i][2] << " Distance: " << scalarField[x+vertPos[i][0]][y+vertPos[i][1]][z+vertPos[i][2]] << " CaseNum: " << caseNum <<  endl;
 				}
+				//cout << "Case Num: " << caseNum << endl;
 
 				// Use lookup table to find case
 				int numTriangles = triangleTable[caseNum][0];
+				//cout << "Number of triangles: " << numTriangles << endl;
 				for(int i = 1; i < (numTriangles*3)+1; i++){
 					// Edge to place vertex
 					int edge = triangleTable[caseNum][i];
+					//cout << "Edge: " << edge << endl;
 
 					// Store the edge vertices
 					for(int j = 0; j < 3; j++){
 						vertexA[j] = vertPos[edgeTable[edge][0]][j];
 						vertexB[j] = vertPos[edgeTable[edge][1]][j];
 					}
+					//cout << "VertexA: " << glm::to_string(vertexA) << endl;
+					//cout << "VertexB: " << glm::to_string(vertexB) << endl;
 
 					// Add the current position to put into world co-ords
 					vertexA = vertexA + glm::vec3(x,y,z);
@@ -70,11 +85,15 @@ int main(int argc, char** argv){
 					distB = scalarField[vertexB[0]][vertexB[1]][vertexB[2]];
 
 					// Get vertex position on the edge using linear interpolation
-					triSoup.push_back(vertexA + (ISOVALUE - distA) * (vertexB - vertexA) / (distB - distA));
+					//triSoup.push_back(vertexA + (ISOVALUE - distA) * (vertexB - vertexA) / (distB - distA));
+					triSoup.push_back((vertexA + vertexB)/float(2.0));
 				}
+				//break; 
 			}
+			//break;
 		}
-	}
+		//break;
+	} 
 
 	/* Output to triangle soup .tri file
 	// Write the output to triangle soup file

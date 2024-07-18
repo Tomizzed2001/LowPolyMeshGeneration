@@ -18,7 +18,7 @@ std::vector<glm::vec3> vertices;
 std::vector<glm::vec3> vertexNormals;
 std::vector<unsigned int> faces;
 std::vector<unsigned int> firstDirectedEdges;
-std::vector<unsigned int> otherHalf;
+std::vector<int> otherHalf;
 std::vector<glm::mat4> quadrics;    // Q matrix per vertex
 std::vector<float> errorCosts;
 
@@ -28,11 +28,15 @@ std::unordered_set<unsigned int> findOneRing(unsigned int vertexID);
 
 void removeFace(unsigned int faceID);
 
+void removeFaceNew(unsigned int faceID, int faceNum);
+
 void findOtherHalf(unsigned int edgeID);
 
 void updateQ(unsigned int vertexID);
 
 void updateError(unsigned int edgeID);
+
+float getEdgeLength(unsigned int edgeID);
 
 void outputToDiredge();
 
