@@ -17,4 +17,10 @@ std::vector<int> faces;
 std::vector<int> firstDirectedEdges;
 std::vector<int> otherHalf;
 
+std::vector<glm::vec3> triSoup;
+
 int getVertexID(glm::vec3 vertex);
+
+void outputToObject(int num);
+
+void getSingleCube(int caseNum);

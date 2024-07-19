@@ -32,7 +32,6 @@ int main(int argc, char** argv){
 	dField.close();
 
 	// Define vertex holding structures
-	vector<glm::vec3> triSoup;
 	glm::vec3 vertexA;
 	glm::vec3 vertexB;
 	float distA;
@@ -41,6 +40,60 @@ int main(int argc, char** argv){
 	//xDimension = 20;
 	//yDimension = 14;
 	//zDimension = 14;
+	/*
+	for(int i = 0; i < 256; i++){
+		getSingleCube(i);
+		// Build the directed edge data structure from the triangle soup.
+		for(size_t vID = 0; vID < triSoup.size(); vID++){
+			// Get the vertex index and place if not found.
+			int vertex = getVertexID(triSoup[vID]);
+			// Add the vertex id to the face
+			faces.push_back(vertex);
+		}
+
+		// Index storage variables
+		int v0, v1;
+
+		otherHalf.resize(faces.size(),-1);
+
+		// Get the other half
+		for(size_t eID = 0; eID < faces.size(); eID++){
+			// Since faces form the edges check if it needs to search for 2 to 0 edge
+			if (eID % 3 == 2){
+				v0 = faces[eID];
+				v1 = faces[eID-2];
+			}
+			else{
+				v0 = faces[eID];
+				v1 = faces[eID+1];
+			}
+
+			// Look for v1 to v0
+			for(size_t fID = 0; fID < faces.size(); fID+=3){
+				if(faces[fID] == v1 && faces[fID+1] == v0){
+					otherHalf[eID] = fID + 0;
+					break;
+				}
+				else if(faces[fID+1] == v1 && faces[fID+2] == v0){
+					otherHalf[eID] = fID + 1;
+					break;
+				}
+				else if(faces[fID+2] == v1 && faces[fID] == v0){
+					otherHalf[eID] = fID + 2;
+					break;
+				}
+			}
+		}
+
+		outputToObject(i);
+
+		vertices.clear();
+		faces.clear();
+		firstDirectedEdges.clear();
+		otherHalf.clear();
+		triSoup.clear();
+	}
+	*/
 
 
 	// March through the distance field
@@ -181,3 +234,57 @@ int getVertexID(glm::vec3 vertex){
 	firstDirectedEdges.push_back(faces.size());
 	return vertices.size() - 1;
 }
+
+void getSingleCube(int caseNum){
+	// Get the state of the cube
+	glm::vec3 vertexA;
+	glm::vec3 vertexB;
+	float distA;
+	float distB;
+
+	// Use lookup table to find case
+	int numTriangles = triangleTable[caseNum][0];
+	//cout << "Number of triangles: " << numTriangles << endl;
+	for(int i = 1; i < (numTriangles*3)+1; i++){
+		// Edge to place vertex
+		int edge = triangleTable[caseNum][i];
+		//cout << "Edge: " << edge << endl;
+
+		// Store the edge vertices
+		for(int j = 0; j < 3; j++){
+			vertexA[j] = vertPos[edgeTable[edge][0]][j];
+			vertexB[j] = vertPos[edgeTable[edge][1]][j];
+		}
+		//cout << "VertexA: " << glm::to_string(vertexA) << endl;
+		//cout << "VertexB: " << glm::to_string(vertexB) << endl;
+
+		// Get distance at the vertices from scalar fields
+		distA = scalarField[vertexA[0]][vertexA[1]][vertexA[2]];
+		distB = scalarField[vertexB[0]][vertexB[1]][vertexB[2]];
+
+		// Get vertex position on the edge using linear interpolation
+		//triSoup.push_back(vertexA + (ISOVALUE - distA) * (vertexB - vertexA) / (distB - distA));
+		triSoup.push_back((vertexA + vertexB)/float(2.0));
+	}
+
+	triSoup.push_back(glm::vec3(0.000000, 0.000000, 0.010000));
+	triSoup.push_back(glm::vec3(0.000000, 0.010000, 0.000000));
+	triSoup.push_back(glm::vec3(0.010000, 0.000000, 0.000000));
+}
+
+void outputToObject(int num){
+    std::string var = "marchingCases/case" + to_string(num) + ".obj";
+    ofstream out(var);
+	for(size_t i = 0; i < vertices.size(); i++){
+		out << "v " << std::fixed << vertices[i][0] << " " << vertices[i][1] << " " << vertices[i][2] << endl;
+	}
+	for(size_t i = 0; i < faces.size(); i+=3){
+		out << "f " 
+        << faces[i] + 1 << "//" << " "
+        << faces[i+1] + 1 << "//" << " "
+        << faces[i+2] + 1 << "//"
+        << endl;
+	}
+	out.close();
+}
+

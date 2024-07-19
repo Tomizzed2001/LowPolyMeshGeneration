@@ -4,7 +4,7 @@
 
 using namespace std;
 
-#define DESIRED_TRIANGLE_COUNT 40
+#define DESIRED_TRIANGLE_COUNT 4
 
 int main(int argc, char** argv){
     // Read in the .diredge file provided
@@ -50,6 +50,8 @@ int main(int argc, char** argv){
     inFile.close();
 
     outputToObject(0);
+
+    cout << "Number of triangles: " << faces.size() << endl;
 
     ///////////////////////////////////////////// TEST THE EDGE COLLAPSE ////////////////////////////////////////////
     /*
@@ -115,19 +117,21 @@ int main(int argc, char** argv){
     vector<pair<float, int>> collapseOrder;
     for(size_t ohID = 0; ohID < otherHalf.size(); ohID++){
         // Get the error cost for a valid half edge
-        float lengthOfEdge = getEdgeLength(ohID);
-        if(lengthOfEdge != -1){
-            collapseOrder.push_back(make_pair(lengthOfEdge, ohID));
+        errorCosts.push_back(getEdgeLength(ohID));
+        if(errorCosts.back() != -1){
+            collapseOrder.push_back(make_pair(errorCosts.back(), ohID));
         }
     }
 
+    /*
+    */
+    // Sort with smallest length first
+    sort(collapseOrder.begin(), collapseOrder.end());
     for(size_t i = 0; i < collapseOrder.size(); i++){
         cout << collapseOrder[i].first << " " << collapseOrder[i].second << endl;
     }
 
-    // Sort with smallest length first
-    sort(collapseOrder.begin(), collapseOrder.end());
-
+    return 0;
 
     /////////////////////////////////////////////// COLLAPSE ORDERING ///////////////////////////////////////////////
 
@@ -140,7 +144,7 @@ int main(int argc, char** argv){
     while((faces.size() / 3) > DESIRED_TRIANGLE_COUNT || collapseOrder.empty()){
         cout << "Run: " << counter << endl;
         // Get the edge to collapse
-        unsigned int edge = 0;
+        unsigned int edge = collapseOrder[0].second;
         unsigned int otherEdge = otherHalf[edge];
 
         // Get the vertices involved
@@ -183,11 +187,24 @@ int main(int argc, char** argv){
         removedVertices.push_back(goneVertex);
 
         // Re-Generate Collapse Order
+        collapseOrder.clear();
+        for(size_t ohID = 0; ohID < otherHalf.size(); ohID++){
+            // Get the error cost for a valid half edge
+            errorCosts.push_back(getEdgeLength(ohID));
+            if(errorCosts.back() != -1){
+                collapseOrder.push_back(make_pair(errorCosts.back(), ohID));
+            }
+        }
+
+        // Sort with smallest length first
+        sort(collapseOrder.begin(), collapseOrder.end());
 
         // DEBUG OBJECT FILE
-        outputToObject(counter);
+        //outputToObject(counter);
         counter++;
     }
+
+    outputToDiredge();
 
     //outputToObject();
     //cout << "OUTPUT" << endl;
