@@ -1,13 +1,13 @@
 ﻿// MarchingCubes.cpp : Defines the entry point for the application.
 
 #include "MarchingCubes.h"
-#include "mc_tables.h"
+#include "mc_tables_correct.h"
 
 #include <glm/gtx/string_cast.hpp>
 
 using namespace std;
 
-#define ISOVALUE 0
+#define ISOVALUE 0.00005
 
 int main(int argc, char** argv){
 	// Read in the scalar field 
@@ -31,6 +31,9 @@ int main(int argc, char** argv){
 	}
 	dField.close();
 
+	array<int, 3> empty = {-1,-1,-1};
+	cubeEdges.resize(xDimension-1, vector<vector<std::array<int,3>>>(yDimension-1, vector<std::array<int,3>>(zDimension-1, empty)));
+
 	// Define vertex holding structures
 	glm::vec3 vertexA;
 	glm::vec3 vertexB;
@@ -43,14 +46,14 @@ int main(int argc, char** argv){
 	/*
 	for(int i = 0; i < 256; i++){
 		getSingleCube(i);
-		// Build the directed edge data structure from the triangle soup.
+		// Build the directed edge data structure from the triangle soup.   
 		for(size_t vID = 0; vID < triSoup.size(); vID++){
 			// Get the vertex index and place if not found.
 			int vertex = getVertexID(triSoup[vID]);
 			// Add the vertex id to the face
 			faces.push_back(vertex);
 		}
-
+ 
 		// Index storage variables
 		int v0, v1;
 
@@ -137,9 +140,20 @@ int main(int argc, char** argv){
 					distA = scalarField[vertexA[0]][vertexA[1]][vertexA[2]];
 					distB = scalarField[vertexB[0]][vertexB[1]][vertexB[2]];
 
+					// Get the edge of the cube in the cube edge table to see if the edge already has a vertex
+					int currentEdgeValue = cubeEdges[cubeEdgeLookUp[edge][0] + x][cubeEdgeLookUp[edge][1] + y][cubeEdgeLookUp[edge][2] + z][cubeEdgeLookUp[edge][3]];
+
+					if(currentEdgeValue == -1){
+						// Nothing placed yet so place it
+						triSoup.push_back(vertexA + float(ISOVALUE - distA) * (vertexB - vertexA) / (distB - distA));
+						cubeEdges[cubeEdgeLookUp[edge][0] + x][cubeEdgeLookUp[edge][1] + y][cubeEdgeLookUp[edge][2] + z][cubeEdgeLookUp[edge][3]] = triSoup.size()-1;
+					}
+					else{
+						triSoup.push_back(triSoup[currentEdgeValue]);
+					}
+
 					// Get vertex position on the edge using linear interpolation
-					//triSoup.push_back(vertexA + (ISOVALUE - distA) * (vertexB - vertexA) / (distB - distA));
-					triSoup.push_back((vertexA + vertexB)/float(2.0));
+					//triSoup.push_back((vertexA + vertexB)/float(2.0));
 				}
 				//break; 
 			}
@@ -219,6 +233,8 @@ int main(int argc, char** argv){
 
 	out.close();
 
+	outputToObject();
+
 	return 0;
 }
 
@@ -239,31 +255,21 @@ void getSingleCube(int caseNum){
 	// Get the state of the cube
 	glm::vec3 vertexA;
 	glm::vec3 vertexB;
-	float distA;
-	float distB;
 
 	// Use lookup table to find case
 	int numTriangles = triangleTable[caseNum][0];
-	//cout << "Number of triangles: " << numTriangles << endl;
+
 	for(int i = 1; i < (numTriangles*3)+1; i++){
 		// Edge to place vertex
 		int edge = triangleTable[caseNum][i];
-		//cout << "Edge: " << edge << endl;
 
 		// Store the edge vertices
 		for(int j = 0; j < 3; j++){
 			vertexA[j] = vertPos[edgeTable[edge][0]][j];
 			vertexB[j] = vertPos[edgeTable[edge][1]][j];
 		}
-		//cout << "VertexA: " << glm::to_string(vertexA) << endl;
-		//cout << "VertexB: " << glm::to_string(vertexB) << endl;
-
-		// Get distance at the vertices from scalar fields
-		distA = scalarField[vertexA[0]][vertexA[1]][vertexA[2]];
-		distB = scalarField[vertexB[0]][vertexB[1]][vertexB[2]];
 
 		// Get vertex position on the edge using linear interpolation
-		//triSoup.push_back(vertexA + (ISOVALUE - distA) * (vertexB - vertexA) / (distB - distA));
 		triSoup.push_back((vertexA + vertexB)/float(2.0));
 	}
 
@@ -288,3 +294,18 @@ void outputToObject(int num){
 	out.close();
 }
 
+void outputToObject(){
+    std::string var = "marchingCases/out.obj";
+    ofstream out(var);
+	for(size_t i = 0; i < vertices.size(); i++){
+		out << "v " << std::fixed << vertices[i][0] << " " << vertices[i][1] << " " << vertices[i][2] << endl;
+	}
+	for(size_t i = 0; i < faces.size(); i+=3){
+		out << "f " 
+        << faces[i] + 1 << "//" << " "
+        << faces[i+1] + 1 << "//" << " "
+        << faces[i+2] + 1 << "//"
+        << endl;
+	}
+	out.close();
+}

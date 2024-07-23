@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define GRID_SIZE 0.1
+#define GRID_SIZE 0.05
 
 int main(int argc, char** argv)
 {
@@ -160,7 +160,7 @@ int main(int argc, char** argv)
 		for (int y = 0; y < ySize; y++) {
 			for (int z = 0; z < zSize; z++) {
                 // Truncate at 4 decimal places and add 5 as the 5th (0.00005)
-				out << std::fixed << setprecision(4) << scalarField[x][y][z] << 5 << " ";
+				out << std::fixed << setprecision(4) << scalarField[x][y][z] << " ";
 			}
             out << endl;
 		}

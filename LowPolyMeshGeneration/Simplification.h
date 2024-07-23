@@ -12,6 +12,7 @@
 #include <string>
 #include <sstream>
 #include <cmath>
+#include <chrono>
 #include "glm/glm.hpp"
 
 std::vector<glm::vec3> vertices;
@@ -19,8 +20,12 @@ std::vector<glm::vec3> vertexNormals;
 std::vector<unsigned int> faces;
 std::vector<unsigned int> firstDirectedEdges;
 std::vector<int> otherHalf;
+
 std::vector<glm::mat4> quadrics;    // Q matrix per vertex
-std::vector<float> errorCosts;
+std::vector<float> errorCosts;      // Cost for each half edge
+std::vector<glm::vec3> optimalVertexPosition;
+
+std::vector<int> updatedEdges;
 
 glm::mat4 findK(int triangleID);
 
@@ -34,7 +39,7 @@ void findOtherHalf(unsigned int edgeID);
 
 void updateQ(unsigned int vertexID);
 
-void updateError(unsigned int edgeID);
+float getEdgeError(unsigned int edgeID);
 
 float getEdgeLength(unsigned int edgeID);
 
@@ -43,3 +48,5 @@ void outputToDiredge();
 void outputToObject();
 
 void outputToObject(int num);
+
+int checkForFlip(unsigned int goneVertexID, unsigned int keptVertexID, glm::vec3 newVertexPosition);
