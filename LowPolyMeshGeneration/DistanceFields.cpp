@@ -175,16 +175,16 @@ void fitToGrid(float *point, bool isMin){
     //Get the sign
     int sign;
     if(isMin){
-        sign = -2;
+        sign = -1;
     }else{
-        sign = 2;
+        sign = 1;
     }
     for(int i = 0; i < 3; i++){
-        if(point[i] < 0){
-            point[i] = -(abs(point[i]) + (GRID_SIZE - fmod(abs(point[i]), GRID_SIZE))) + (sign * GRID_SIZE);
-        }
-        else{
-            point[i] = point[i] + (GRID_SIZE - fmod(point[i], GRID_SIZE)) + (sign * GRID_SIZE);
+        if(point[i] < 0){       // Ensure the co-ordinate stays negative
+            point[i] = -(abs(point[i]) + (GRID_SIZE - fmod(abs(point[i]), GRID_SIZE))) + (sign * 2 * GRID_SIZE);
+        }  
+        else{                   // Co-ordinate
+            point[i] = point[i] + (GRID_SIZE - fmod(point[i], GRID_SIZE)) + (sign * 2 * GRID_SIZE);
         }
     }
 }

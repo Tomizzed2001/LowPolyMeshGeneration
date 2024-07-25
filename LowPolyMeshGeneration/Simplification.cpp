@@ -4,7 +4,7 @@
 
 using namespace std;
 
-#define DESIRED_TRIANGLE_COUNT 32
+#define DESIRED_TRIANGLE_COUNT 6000
 
 int main(int argc, char** argv){
     // Read in the .diredge file provided
@@ -148,24 +148,24 @@ int main(int argc, char** argv){
 
     /////////////////////////////////////////////// COLLAPSE ORDERING ///////////////////////////////////////////////
 
-
+    cout << "Beginning main loop" << endl;
     vector<unsigned int> removedVertices;
     int counter = 1;
     //cout << "Collapsing edges" << endl;
     // Complete the collapse in the order of lowest error cost first
-    while((faces.size() / 3) > DESIRED_TRIANGLE_COUNT && !collapseOrder.empty() && counter < 100){
+    while((faces.size() / 3) > DESIRED_TRIANGLE_COUNT && !collapseOrder.empty()){
         //cout << "Run: " << counter << endl;
         // Get the edge to collapse
         unsigned int edge = collapseOrder[0].second;
         unsigned int otherEdge = otherHalf[edge];
 
-        cout << "Run: " << counter << " Edge: " << collapseOrder[0].second;
+        //cout << "Run: " << counter << " Edge: " << collapseOrder[0].second;
 
         // Get the vertices involved
         unsigned int keptVertex = faces[edge]; 
         unsigned int goneVertex = faces[otherEdge];
         glm::vec3 newVertexPosition = optimalVertexPosition[collapseOrder[0].second];
-        cout << " Kept Vertex: " << keptVertex << " Gone Vertex: " << goneVertex << " Optimal vertex: " << glm::to_string(newVertexPosition) << endl;
+        //cout << " Kept Vertex: " << keptVertex << " Gone Vertex: " << goneVertex << " Optimal vertex: " << glm::to_string(newVertexPosition) << endl;
 
         
 
@@ -218,6 +218,25 @@ int main(int argc, char** argv){
         // Update the Quadric for the kept vertex
         quadrics[keptVertex] = quadrics[keptVertex] + quadrics[goneVertex];
 
+        // Get all the edges in the 2-ring of the vertex to update them
+        std::unordered_set<unsigned int> oneRing = findOneRing(keptVertex);
+        for(auto id: oneRing) {
+            for(size_t edgeID = 0; edgeID < faces.size(); edgeID++){
+                if(faces[edgeID] == id){
+                    // Vertex is A in the triangle
+                    if(edgeID % 3 == 0){
+                        updatedEdges.push_back(edgeID);
+                        updatedEdges.push_back(edgeID + 2);
+                        continue;
+                    }
+                    else{
+                        updatedEdges.push_back(edgeID);
+                        updatedEdges.push_back(edgeID - 1);
+                    }
+                }
+            }
+        }
+
         // TIMER 1 START
         auto start1 = std::chrono::high_resolution_clock::now();
         
@@ -256,7 +275,7 @@ int main(int argc, char** argv){
 
         auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
  
-        cout << "Time taken by function 1: " << duration1.count() << " microseconds" << endl;
+        //cout << "Time taken by function 1: " << duration1.count() << " microseconds" << endl;
 
 
         // Re-Generate Collapse Order
@@ -271,7 +290,8 @@ int main(int argc, char** argv){
         sort(collapseOrder.begin(), collapseOrder.end());
 
         // DEBUG OBJECT FILE
-        if(counter % 20 == 0 || (counter > 0 && counter < 10)){
+        if(counter % 50 == 0){
+            cout << "Outputting. " << counter << " iterations completed" << endl;
             outputToObject(counter);
         }
         counter++;
@@ -339,11 +359,9 @@ int main(int argc, char** argv){
 
 glm::mat4 findK(int triangleID){
     // Get the triangle
-    glm::vec3 A, B, C;
-    A = vertices[faces[triangleID * 3]];
-    B = vertices[faces[triangleID * 3 + 1]];
-    C = vertices[faces[triangleID * 3 + 2]];
-
+    glm::vec3 A = vertices[faces[triangleID * 3]];
+    glm::vec3 B = vertices[faces[triangleID * 3 + 1]];
+    glm::vec3 C = vertices[faces[triangleID * 3 + 2]];
     // Get the plane
     // Step 1: Calculate the normal
     glm::vec3 AB = B-A;
@@ -378,7 +396,7 @@ std::unordered_set<unsigned int> findOneRing(unsigned int vertexID){
                 continue;
             }
             // Vertex is C in the triangle
-            if(edgeID % 3 == 0){
+            if(edgeID % 3 == 2){
                 oneRing.insert(faces[edgeID - 2]);
                 oneRing.insert(faces[edgeID - 1]);
                 continue;
@@ -460,36 +478,6 @@ void removeFaceNew(unsigned int triangleID, int faceNum){
     //cout << "FaceID: " << faceID << endl;
     // Check that its not the last triangle in the array
     if (faceID != int(faces.size()-3)){
-        // Check to see if the triangle selected and final triangle share an edge
-        for(int i = 0; i < 3; i++){
-            if(otherHalf[faceID+i] >= int(faces.size()-3)){
-                //cout << "Sharing edges:" << faceID+i << otherHalf[faceID+i] << endl;
-                int face1Pos = i - abs(int(otherHalf[faceID+i] - (otherHalf.size() - 1)));
-                int orderOfRotation[3];
-                if (face1Pos == 0){
-                    // No need to rotate
-                    break;
-                }
-                // Rotate the triangle so the shared edge aligns x y z = y z x
-                else if(face1Pos == -1 || face1Pos == 2){
-                    orderOfRotation[0] = faceID + 1;
-                    orderOfRotation[1] = faceID + 2;
-                    orderOfRotation[2] = faceID + 0;
-                }
-                // Rotate the triangle so the shared edge aligns x y z = z x y
-                else{
-                    orderOfRotation[0] = faceID + 2;
-                    orderOfRotation[1] = faceID + 0;
-                    orderOfRotation[2] = faceID + 1;
-                }
-                // Rotate
-                unsigned int temp[3] = {faces[orderOfRotation[0]], faces[orderOfRotation[1]], faces[orderOfRotation[2]]};
-                faces[faceID] = temp[0];
-                faces[faceID+1] = temp[1];
-                faces[faceID+2] = temp[2];
-            }
-        }
-
         // Swap the faces
         faces[faceID] = faces[faces.size()-3];
         faces[faceID+1] = faces[faces.size()-2];
@@ -498,16 +486,20 @@ void removeFaceNew(unsigned int triangleID, int faceNum){
         updatedEdges.push_back(faceID+1);
         updatedEdges.push_back(faceID+2);
 
+        // For each edge in the triangle
         for(int i = 0; i < 3; i++){
+            // If the edge will be the same but flipped remove the edge
             if(faceID+i == otherHalf[otherHalf.size()-(3-i)]){
                 otherHalf[faceID+i] = -1 * faceNum;
             }
             else{
+                // If the edge already has no other half
                 if(otherHalf[faceID+i] != -1){
-                    //cout << "Otherhalf: " << otherHalf[faceID+i] << " = -1 " << endl;
                     otherHalf[otherHalf[faceID+i]] = -1 * faceNum;
                 }
+                // Swap the other half
                 otherHalf[faceID+i] = otherHalf[otherHalf.size()-(3-i)];
+                // Update the corresponding other half with the new position
                 otherHalf[otherHalf[faceID+i]] = faceID+i;
             }
         }
@@ -600,8 +592,6 @@ float getEdgeError(unsigned int edgeID){
         // Invalid collapse operation
         return -1;
     }
-    
-    // Place on the "from" vertex
 
     // Get the quadric for each vertex
     glm::mat4 Q1 = quadrics[faces[edgeID]];
