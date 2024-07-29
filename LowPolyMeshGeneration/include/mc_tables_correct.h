@@ -5,9 +5,7 @@
 //==================================================================================//
 // Corrected marching cubes look-up table based on the paper A modified look-up table 
 // for implicit disambiguation of Marching Cubes by Claudio Montani, Riccardo Scateni
-// and Roberto Scopigno. Original table contained Holes for ambiguos faces as 
-// mentioned in the paper and was fixed by individually asessing the compliment of
-// cases.
+// and Roberto Scopigno. 
 //==================================================================================//
 
 /** look-up tables for linearly interpolated marching cubes cases **/

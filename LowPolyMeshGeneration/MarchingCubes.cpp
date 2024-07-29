@@ -162,55 +162,43 @@ int main(int argc, char** argv){
 		//break;
 	} 
 
-	/* Output to triangle soup .tri file
-	// Write the output to triangle soup file
-	ofstream outOld("out.tri");
-	outOld <<  triSoup.size() / 3 << endl;
-
-	for(size_t i = 0; i < triSoup.size(); i++){
-		outOld << std::fixed << triSoup[i][0] << " " << triSoup[i][1] << " " << triSoup[i][2] << " " << endl;
-	}
-
-	outOld.close();
-	*/
-
 	// Build the directed edge data structure from the triangle soup.
 	for(size_t vID = 0; vID < triSoup.size(); vID++){
 		// Get the vertex index and place if not found.
 		int vertex = getVertexID(triSoup[vID]);
 		// Add the vertex id to the face
-		faces.push_back(vertex);
+		mesh.edges.push_back(vertex);
 	}
 
 	// Index storage variables
 	int v0, v1;
 
-	otherHalf.resize(faces.size(),-1);
+	mesh.otherhalves.resize(mesh.edges.size(),-1);
 
 	// Get the other half
-	for(size_t eID = 0; eID < faces.size(); eID++){
+	for(size_t eID = 0; eID < mesh.edges.size(); eID++){
 		// Since faces form the edges check if it needs to search for 2 to 0 edge
 		if (eID % 3 == 2){
-			v0 = faces[eID];
-			v1 = faces[eID-2];
+			v0 = mesh.edges[eID];
+			v1 = mesh.edges[eID-2];
 		}
 		else{
-			v0 = faces[eID];
-			v1 = faces[eID+1];
+			v0 = mesh.edges[eID];
+			v1 = mesh.edges[eID+1];
 		}
 
 		// Look for v1 to v0
-		for(size_t fID = 0; fID < faces.size(); fID+=3){
-			if(faces[fID] == v1 && faces[fID+1] == v0){
-				otherHalf[eID] = fID + 0;
+		for(size_t fID = 0; fID < mesh.edges.size(); fID+=3){
+			if(mesh.edges[fID] == v1 && mesh.edges[fID+1] == v0){
+				mesh.otherhalves[eID] = fID + 0;
 				break;
 			}
-			else if(faces[fID+1] == v1 && faces[fID+2] == v0){
-				otherHalf[eID] = fID + 1;
+			else if(mesh.edges[fID+1] == v1 && mesh.edges[fID+2] == v0){
+				mesh.otherhalves[eID] = fID + 1;
 				break;
 			}
-			else if(faces[fID+2] == v1 && faces[fID] == v0){
-				otherHalf[eID] = fID + 2;
+			else if(mesh.edges[fID+2] == v1 && mesh.edges[fID] == v0){
+				mesh.otherhalves[eID] = fID + 2;
 				break;
 			}
 		}
@@ -218,17 +206,14 @@ int main(int argc, char** argv){
 
 	// Write the output to a directed edge file format
 	ofstream out("out.diredge");
-	for(size_t i = 0; i < vertices.size(); i++){
-		out << "v " << std::fixed << vertices[i][0] << " " << vertices[i][1] << " " << vertices[i][2] << endl;
+	for(size_t i = 0; i < mesh.vertices.size(); i++){
+		out << "v " << std::fixed << mesh.vertices[i][0] << " " << mesh.vertices[i][1] << " " << mesh.vertices[i][2] << endl;
 	}
-	for(size_t i = 0; i < firstDirectedEdges.size(); i++){
-		out << "fde " << firstDirectedEdges[i] << endl;
-	} 
-	for(size_t i = 0; i < faces.size(); i+=3){
-		out << "f " << faces[i] << " " << faces[i+1] << " " << faces[i+2] << endl;
+	for(size_t i = 0; i < mesh.edges.size(); i+=3){
+		out << "f " << mesh.edges[i] << " " << mesh.edges[i+1] << " " << mesh.edges[i+2] << endl;
 	}
-	for(size_t i = 0; i < otherHalf.size(); i++){
-		out << "oh " << otherHalf[i] << endl;
+	for(size_t i = 0; i < mesh.otherhalves.size(); i++){
+		out << "oh " << mesh.otherhalves[i] << endl;
 	}
 
 	out.close();
@@ -240,15 +225,15 @@ int main(int argc, char** argv){
 
 int getVertexID(glm::vec3 vertex){
 	// Look to see if the vertex already exists
-	for(size_t i = 0; i < vertices.size(); i++){
-		if(vertex == vertices[i]){
+	for(size_t i = 0; i < mesh.vertices.size(); i++){
+		if(vertex == mesh.vertices[i]){
 			return i;
 		}
 	}
 	// Place the vertex in the vertex array and return the index
-	vertices.push_back(vertex);
-	firstDirectedEdges.push_back(faces.size());
-	return vertices.size() - 1;
+	mesh.vertices.push_back(vertex);
+	//mesh.firstDirectedEdges.push_back(faces.size());
+	return mesh.vertices.size() - 1;
 }
 
 void getSingleCube(int caseNum){
@@ -281,14 +266,14 @@ void getSingleCube(int caseNum){
 void outputToObject(int num){
     std::string var = "marchingCases/case" + to_string(num) + ".obj";
     ofstream out(var);
-	for(size_t i = 0; i < vertices.size(); i++){
-		out << "v " << std::fixed << vertices[i][0] << " " << vertices[i][1] << " " << vertices[i][2] << endl;
+	for(size_t i = 0; i < mesh.vertices.size(); i++){
+		out << "v " << std::fixed << mesh.vertices[i][0] << " " << mesh.vertices[i][1] << " " << mesh.vertices[i][2] << endl;
 	}
-	for(size_t i = 0; i < faces.size(); i+=3){
+	for(size_t i = 0; i < mesh.vertices.size(); i+=3){
 		out << "f " 
-        << faces[i] + 1 << "//" << " "
-        << faces[i+1] + 1 << "//" << " "
-        << faces[i+2] + 1 << "//"
+        << mesh.edges[i] + 1 << "//" << " "
+        << mesh.edges[i+1] + 1 << "//" << " "
+        << mesh.edges[i+2] + 1 << "//"
         << endl;
 	}
 	out.close();
@@ -297,14 +282,14 @@ void outputToObject(int num){
 void outputToObject(){
     std::string var = "marchingCases/out.obj";
     ofstream out(var);
-	for(size_t i = 0; i < vertices.size(); i++){
-		out << "v " << std::fixed << vertices[i][0] << " " << vertices[i][1] << " " << vertices[i][2] << endl;
+	for(size_t i = 0; i < mesh.vertices.size(); i++){
+		out << "v " << std::fixed << mesh.vertices[i][0] << " " << mesh.vertices[i][1] << " " << mesh.vertices[i][2] << endl;
 	}
-	for(size_t i = 0; i < faces.size(); i+=3){
+	for(size_t i = 0; i < mesh.edges.size(); i+=3){
 		out << "f " 
-        << faces[i] + 1 << "//" << " "
-        << faces[i+1] + 1 << "//" << " "
-        << faces[i+2] + 1 << "//"
+        << mesh.edges[i] + 1 << "//" << " "
+        << mesh.edges[i+1] + 1 << "//" << " "
+        << mesh.edges[i+2] + 1 << "//"
         << endl;
 	}
 	out.close();

@@ -25,12 +25,15 @@ int cubeEdgeLookUp[12][4] = {
     { 0,  0,  1, 0}     // 11
     };
 
-std::vector<std::vector<std::vector<float>>> scalarField;
+struct dirEdge {
+    std::vector<glm::vec3> vertices;
+    std::vector<int> edges;
+    std::vector<int> otherhalves;
+};
 
-std::vector<glm::vec3> vertices;
-std::vector<int> faces;
-std::vector<int> firstDirectedEdges;
-std::vector<int> otherHalf;
+dirEdge mesh;
+
+std::vector<std::vector<std::vector<float>>> scalarField;
 
 std::vector<std::vector<std::vector<std::array<int,3>>>> cubeEdges;
 

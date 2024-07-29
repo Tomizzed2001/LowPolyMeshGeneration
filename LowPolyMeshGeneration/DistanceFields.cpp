@@ -21,7 +21,6 @@ int main(int argc, char** argv)
     float minPoint[3] = {0}, maxPoint[3] = {0};
     bool firstVertex = true;
 
-
 	// Read in the .obj file
 	ifstream dField(argv[1]);
     if (dField.is_open()){
@@ -35,14 +34,8 @@ int main(int argc, char** argv)
         while (getline(dField, newLine)) {
             stringstream line(newLine);
             line >> ss;
-            // If vertex normal
-            if(ss == "vn"){
-                glm::vec3 n;
-                line >> n.x >> n.y >> n.z;
-                normals.push_back(n);
-            }
             // If vertex
-            else if(ss == "v"){
+            if(ss == "v"){
                 glm::vec3 p;
                 // Format is x y z as a point
                 for(int i = 0; i < 3; i++){
@@ -55,7 +48,7 @@ int main(int argc, char** argv)
                         maxPoint[i] = p[i];
                     }
                 }
-                vertices.push_back(p);
+                inputMesh.vertices.push_back(p);
                 if(firstVertex){
                     minPoint[0] = p.x;
                     maxPoint[0] = p.x;
@@ -82,7 +75,7 @@ int main(int argc, char** argv)
                     // Get Normal
                     getline(ssFace, vtn, '/');
                 }
-                faces.push_back(f);
+                inputMesh.faces.push_back(f);
                 //cout << "Face: " << glm::to_string(faces[11]) << endl;
             }
         }
@@ -90,28 +83,28 @@ int main(int argc, char** argv)
     dField.close();
     
     // Calculate face normals from scratch
-    fNormals.resize(faces.size());
-    for(size_t fID = 0; fID < faces.size(); fID++){
-        glm::vec3 AB = vertices[faces[fID].y] - vertices[faces[fID].x];
-        glm::vec3 AC = vertices[faces[fID].z] - vertices[faces[fID].x];
+    fNormals.resize(inputMesh.faces.size());
+    for(size_t fID = 0; fID < inputMesh.faces.size(); fID++){
+        glm::vec3 AB = inputMesh.vertices[inputMesh.faces[fID].y] - inputMesh.vertices[inputMesh.faces[fID].x];
+        glm::vec3 AC = inputMesh.vertices[inputMesh.faces[fID].z] - inputMesh.vertices[inputMesh.faces[fID].x];
         fNormals[fID] = glm::normalize(glm::cross(AB, AC));
     }
 
     // Calculate the edge normals from scratch
-    eNormals.resize(faces.size()*3);
-    for(size_t fID = 0; fID < faces.size(); fID++){
+    eNormals.resize(inputMesh.faces.size()*3);
+    for(size_t fID = 0; fID < inputMesh.faces.size(); fID++){
         // AB edge
-        eNormals[fID * 3] = glm::normalize((findOtherHalfNormal(faces[fID].x, faces[fID].y) + fNormals[fID]) / float(2));
+        eNormals[fID * 3] = glm::normalize((findOtherHalfNormal(inputMesh.faces[fID].x, inputMesh.faces[fID].y) + fNormals[fID]) / float(2));
         // BC edge
-        eNormals[fID * 3 + 1] = glm::normalize((findOtherHalfNormal(faces[fID].y, faces[fID].z) + fNormals[fID]) / float(2));
+        eNormals[fID * 3 + 1] = glm::normalize((findOtherHalfNormal(inputMesh.faces[fID].y, inputMesh.faces[fID].z) + fNormals[fID]) / float(2));
         // CA edge
-        eNormals[fID * 3 + 2] = glm::normalize((findOtherHalfNormal(faces[fID].z, faces[fID].x) + fNormals[fID]) / float(2));
+        eNormals[fID * 3 + 2] = glm::normalize((findOtherHalfNormal(inputMesh.faces[fID].z, inputMesh.faces[fID].x) + fNormals[fID]) / float(2));
     }
 
     // Calculate the vertex normals from scratch
-    vNormals.resize(vertices.size());
-    for(size_t vID = 0; vID < vertices.size(); vID++){
-        vNormals[vID] = getVertexNormal(vID);
+    inputMesh.vNormals.resize(inputMesh.vertices.size());
+    for(size_t vID = 0; vID < inputMesh.vertices.size(); vID++){
+        inputMesh.vNormals[vID] = getVertexNormal(vID);
     }
 
     //Round the points so the grid fits nicely
@@ -130,12 +123,12 @@ int main(int argc, char** argv)
 		for (float yID = 0, y = minPoint[1]; yID < ySize; yID++, y+=GRID_SIZE) {
 			for (float zID = 0, z = minPoint[2]; zID < zSize; zID++, z+=GRID_SIZE) {
                 float closestDistance = 1000;
-                for(size_t faceID = 0; faceID < faces.size(); faceID++){
+                for(size_t faceID = 0; faceID < inputMesh.faces.size(); faceID++){
                     float distance = distanceToTriangle(
                         glm::vec3(x,y,z),               // Point
-                        vertices[faces[faceID].x],      // Vertex A
-                        vertices[faces[faceID].y],      // Vertex B
-                        vertices[faces[faceID].z],      // Vertex C
+                        inputMesh.vertices[inputMesh.faces[faceID].x],      // Vertex A
+                        inputMesh.vertices[inputMesh.faces[faceID].y],      // Vertex B
+                        inputMesh.vertices[inputMesh.faces[faceID].z],      // Vertex C
                         faceID                          // Face ID
                     );
 
@@ -148,7 +141,6 @@ int main(int argc, char** argv)
                     closestDistance = 0;
                 }
                 scalarField[xID][yID][zID] = closestDistance;
-                here = false;
             }
         }
     }
@@ -216,10 +208,6 @@ float distanceToTriangle(glm::vec3 P, glm::vec3 A, glm::vec3 B, glm::vec3 C, uns
     //cout << "Tests: " << testAB << " " << testBC << " " << testCA << endl;
     if(testAB <= 0 && testBC <= 0 && testCA <= 0){
         // Inside the triangle
-        if(here == true){
-            cout << "We Inside" << endl;
-        }
-
         // Angle between normal and AP
         glm::vec3 AP = glm::normalize(P - A);
         float alpha = glm::dot(AP, N);
@@ -235,12 +223,8 @@ float distanceToTriangle(glm::vec3 P, glm::vec3 A, glm::vec3 B, glm::vec3 C, uns
     float dAB = glm::dot(AB,AP);
     float dAC = glm::dot(AC,AP);
     if(dAB <= 0 && dAC <= 0){
-        if(here == true){
-            cout << "Vertex A" << endl;
-        }
-
         // Calculate the sign using vertex normal
-        float s = sign(glm::dot(A - P, vNormals[faces[faceID].x]));
+        float s = sign(glm::dot(A - P, inputMesh.vNormals[inputMesh.faces[faceID].x]));
         float d = glm::length(A - P);
 
         return s * d;
@@ -250,12 +234,8 @@ float distanceToTriangle(glm::vec3 P, glm::vec3 A, glm::vec3 B, glm::vec3 C, uns
     float dBA = glm::dot(BA,BP);
     float dBC = glm::dot(BC,BP);
     if(dBA <= 0 && dBC <= 0){
-        if(here == true){
-            cout << "Vertex B" << endl;
-        }
-
         // Calculate the sign using vertex normal
-        float s = sign(glm::dot(B - P, vNormals[faces[faceID].y]));
+        float s = sign(glm::dot(B - P, inputMesh.vNormals[inputMesh.faces[faceID].y]));
         float d = glm::length(B - P);
 
         return s * d;
@@ -265,12 +245,8 @@ float distanceToTriangle(glm::vec3 P, glm::vec3 A, glm::vec3 B, glm::vec3 C, uns
     float dCA = glm::dot(CA,CP);
     float dCB = glm::dot(CB,CP);
     if(dCA <= 0 && dCB <= 0){
-        if(here == true){
-            cout << "Vertex C" << endl;
-        }
-
         // Calculate the sign using vertex normal
-        float s = sign(glm::dot(C - P, vNormals[faces[faceID].z]));
+        float s = sign(glm::dot(C - P, inputMesh.vNormals[inputMesh.faces[faceID].z]));
         float d = glm::length(C - P);
 
         return s * d;
@@ -278,10 +254,6 @@ float distanceToTriangle(glm::vec3 P, glm::vec3 A, glm::vec3 B, glm::vec3 C, uns
     
     // Check for closest to edge AB
     if(dAB >= 0 && dBA >= 0 && testAB >= 0){
-        if(here == true){
-            cout << "Edge AB" << endl;
-        }
-
         float d = distanceToEdge(P, A, B);
         float s = sign(glm::dot(A-P, eNormals[faceID * 3]));
 
@@ -290,9 +262,6 @@ float distanceToTriangle(glm::vec3 P, glm::vec3 A, glm::vec3 B, glm::vec3 C, uns
 
     // Check for closest to edge BC
     if(dBC >= 0 && dCB >= 0 && testBC >= 0){
-        if(here == true){
-            cout << "Edge BC" << endl;
-        }
         float d = distanceToEdge(P, B, C);
         float s = sign(glm::dot(B-P, eNormals[faceID * 3 + 1]));
         return s * d;
@@ -300,9 +269,6 @@ float distanceToTriangle(glm::vec3 P, glm::vec3 A, glm::vec3 B, glm::vec3 C, uns
 
     // Check for closest to edge CA
     if(dCA >= 0 && dAC >= 0 && testCA >= 0){
-        if(here == true){
-            cout << "Edge CA" << endl;
-        }
         float d = distanceToEdge(P, C, A);
         float s = sign(glm::dot(C-P, eNormals[faceID * 3 + 2]));
         return s * d;
@@ -330,8 +296,8 @@ int sign(float value){
 glm::vec3 getVertexNormal(unsigned int vertexID){
     vector<glm::vec3> triangleNormals;
     // Find the triangles using the vertex
-    for(size_t fID = 0; fID < faces.size(); fID++){
-        if(faces[fID].x == vertexID || faces[fID].y == vertexID || faces[fID].z == vertexID){
+    for(size_t fID = 0; fID < inputMesh.faces.size(); fID++){
+        if(inputMesh.faces[fID].x == vertexID || inputMesh.faces[fID].y == vertexID || inputMesh.faces[fID].z == vertexID){
             triangleNormals.push_back(fNormals[fID]);
         }
     }
@@ -347,10 +313,10 @@ glm::vec3 getVertexNormal(unsigned int vertexID){
 
 glm::vec3 findOtherHalfNormal(unsigned int v0, unsigned int v1){
     // Look for v1 to v0
-    for(size_t fID = 0; fID < faces.size(); fID++){
-        if((faces[fID].x == v1 && faces[fID].y == v0) || 
-            (faces[fID].y == v1 && faces[fID].z == v0) ||
-            (faces[fID].z == v1 && faces[fID].x == v0)
+    for(size_t fID = 0; fID < inputMesh.faces.size(); fID++){
+        if((inputMesh.faces[fID].x == v1 && inputMesh.faces[fID].y == v0) || 
+            (inputMesh.faces[fID].y == v1 && inputMesh.faces[fID].z == v0) ||
+            (inputMesh.faces[fID].z == v1 && inputMesh.faces[fID].x == v0)
         ){
             return fNormals[fID];
         }

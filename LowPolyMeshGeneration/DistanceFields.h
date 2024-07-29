@@ -13,18 +13,16 @@
 #include <iomanip>
 #include "glm/glm.hpp"
 
-std::vector<glm::vec3> vertices; // x y z
-std::vector<glm::vec3> faces;
-std::vector<glm::vec3> vNormals;
+struct indexFaced {
+    std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> faces;
+    std::vector<glm::vec3> vNormals;
+};
+
+indexFaced inputMesh;
+
 std::vector<glm::vec3> fNormals;
 std::vector<glm::vec3> eNormals;
-
-std::vector<glm::mat4> transforms;
-std::vector<std::vector<glm::vec2>> transformedFaces; // A, B, C, nAB, nBC, nCA
-std::vector<glm::vec3> faceNormals;
-std::vector<glm::vec3> newFaceNormals;
-
-bool here = false;
 
 void fitToGrid(float *point, bool isMin);
 

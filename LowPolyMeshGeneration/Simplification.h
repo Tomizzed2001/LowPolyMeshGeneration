@@ -15,11 +15,16 @@
 #include <chrono>
 #include "glm/glm.hpp"
 
-std::vector<glm::vec3> vertices;
-std::vector<glm::vec3> vertexNormals;
-std::vector<unsigned int> faces;
+struct dirEdge {
+    std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> vertexNormals;
+    std::vector<unsigned int> edges;
+    std::vector<int> otherhalves;
+};
+
+dirEdge mesh;
+
 std::vector<unsigned int> firstDirectedEdges;
-std::vector<int> otherHalf;
 
 std::vector<glm::mat4> quadrics;    // Q matrix per vertex
 std::vector<float> errorCosts;      // Cost for each half edge
@@ -31,9 +36,7 @@ glm::mat4 findK(int triangleID);
 
 std::unordered_set<unsigned int> findOneRing(unsigned int vertexID);
 
-void removeFace(unsigned int faceID);
-
-void removeFaceNew(unsigned int faceID, int faceNum);
+void removeFace(unsigned int faceID, int faceNum);
 
 void findOtherHalf(unsigned int edgeID);
 
