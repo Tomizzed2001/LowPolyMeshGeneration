@@ -24,13 +24,15 @@ struct dirEdge {
 
 dirEdge mesh;
 
+std::vector<std::unordered_set<unsigned int>> oneRings;
+
 std::vector<unsigned int> firstDirectedEdges;
 
 std::vector<glm::mat4> quadrics;    // Q matrix per vertex
 std::vector<float> errorCosts;      // Cost for each half edge
-std::vector<glm::vec3> optimalVertexPosition;
+std::vector<glm::vec3> optimalVertexPosition;   // Per vertex
 
-std::vector<int> updatedEdges;
+std::unordered_set<int> updatedEdges;
 
 glm::mat4 findK(int triangleID);
 

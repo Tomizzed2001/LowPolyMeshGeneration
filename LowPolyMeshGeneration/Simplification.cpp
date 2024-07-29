@@ -54,70 +54,16 @@ int main(int argc, char** argv){
     cout << "Number of triangles: " << mesh.edges.size() / 3 << endl;
     cout << "Number of mesh.vertices: " << mesh.vertices.size() / 3 << endl;
 
-    ///////////////////////////////////////////// TEST THE EDGE COLLAPSE ////////////////////////////////////////////
-    /*
-    // Get the edge to collapse
-    unsigned int edge = 0;
-    unsigned int otherEdge = mesh.otherhalves[edge];
-
-    //cout << "Edge: " << edge << " Other Edge: " << otherEdge << endl;
-
-    // Get the vertices involved
-    unsigned int keptVertex = mesh.edges[edge]; 
-    unsigned int goneVertex = mesh.edges[otherEdge];
-
-    //cout << "Keep Vertex: " << keptVertex << " Remove Vertex: " << goneVertex << endl;
-
-    if ((otherEdge / 3) * 3 == mesh.edges.size()-3){
-        cout << "OTHER IS ON THE FINAL FACE. First Face: " << otherEdge / 3 << " Second Face: " << edge / 3 << endl;
-        removeFace(otherEdge / 3, 1);
-        removeFace(edge / 3, 2);
-    }
-    else{
-        cout << "First Face: " << edge / 3 << " Second Face: " << otherEdge / 3 << endl;
-        removeFace(edge / 3, 1);
-        removeFace(otherEdge / 3, 2);
-    }
-
-    vector<int> firstEdge, secondEdge; 
-
-    // Replace all instances of the goneVertex with the keptVertex
-    for(size_t eID = 0; eID < mesh.edges.size(); eID++){
-        // Check for removed vertex
-        if(mesh.edges[eID] == goneVertex){
-            mesh.edges[eID] = keptVertex;
-        }
-        // Check for removed half edge on the first removed face
-        if(mesh.otherhalves[eID] == -1){
-            firstEdge.push_back(eID);
-        }
-        else if(mesh.otherhalves[eID] == -2){
-            secondEdge.push_back(eID);
-        }
-    }
-
-    mesh.otherhalves[firstEdge[0]] = firstEdge[1];
-    mesh.otherhalves[firstEdge[1]] = firstEdge[0];
-    mesh.otherhalves[secondEdge[0]] = secondEdge[1];
-    mesh.otherhalves[secondEdge[1]] = secondEdge[0];
-
-    removedVertices.push_back(goneVertex);
-
-    outputToObject(1);
-
-    outputToDiredge();
-
-    return 0;
-    */
-    ///////////////////////////////////////////// TEST THE EDGE COLLAPSE ////////////////////////////////////////////
-
     /////////////////////////////////////////////// COLLAPSE ORDERING ///////////////////////////////////////////////
 
     // Calculate the Quadric Error Metric for each half-edge
     // Find Q for each vertex
     quadrics.resize(mesh.vertices.size());
     for(size_t vID = 0; vID < mesh.vertices.size(); vID++){
+        // Update Q
         updateQ(vID);
+        // Find one ring
+        oneRings.push_back(findOneRing(vID));
     }
 
     // Make a vector of the collapse order as a set of pairs <error, edgeID>
@@ -130,44 +76,29 @@ int main(int argc, char** argv){
             collapseOrder.push_back(make_pair(errorCosts.back(), ohID));
         }
     }
-
-    /*
-    for(size_t i = 0; i < errorCosts.size(); i++){
-        cout << "Error of " << i << ": " << errorCosts[i] << endl;
-    }
-    */
     
     // Sort with smallest length first
     sort(collapseOrder.begin(), collapseOrder.end());
-    
-    /*
-    for(size_t i = 0; i < collapseOrder.size(); i++){
-        cout << collapseOrder[i].first << " " << collapseOrder[i].second << endl;
-    }
-    */
 
     /////////////////////////////////////////////// COLLAPSE ORDERING ///////////////////////////////////////////////
 
     cout << "Beginning main loop" << endl;
     vector<unsigned int> removedVertices;
     int counter = 1;
-    //cout << "Collapsing edges" << endl;
+
+    // TIMER 1 START
+    auto start1 = std::chrono::high_resolution_clock::now();
+
     // Complete the collapse in the order of lowest error cost first
     while((mesh.edges.size() / 3) > DESIRED_TRIANGLE_COUNT && !collapseOrder.empty()){
-        //cout << "Run: " << counter << endl;
         // Get the edge to collapse
         unsigned int edge = collapseOrder[0].second;
         unsigned int otherEdge = mesh.otherhalves[edge];
 
-        //cout << "Run: " << counter << " Edge: " << collapseOrder[0].second;
-
         // Get the vertices involved
         unsigned int keptVertex = mesh.edges[edge]; 
         unsigned int goneVertex = mesh.edges[otherEdge];
-        glm::vec3 newVertexPosition = optimalVertexPosition[collapseOrder[0].second];
-        //cout << " Kept Vertex: " << keptVertex << " Gone Vertex: " << goneVertex << " Optimal vertex: " << glm::to_string(newVertexPosition) << endl;
-
-        
+        glm::vec3 newVertexPosition = optimalVertexPosition[collapseOrder[0].second];        
 
         if ((otherEdge / 3) * 3 == mesh.edges.size()-3){
             removeFace(otherEdge / 3, 1);
@@ -177,7 +108,16 @@ int main(int argc, char** argv){
             removeFace(edge / 3, 1);
             removeFace(otherEdge / 3, 2);
         }
- 
+
+        // Update the one rings
+        for(auto vID: oneRings[goneVertex]) {
+            if((oneRings[keptVertex].find(vID) == oneRings[keptVertex].end()) && (vID != keptVertex)){
+                oneRings[keptVertex].insert(vID);
+                oneRings[vID].insert(keptVertex);
+            }
+        }
+        // Remove the old vertex
+        oneRings[keptVertex].erase(oneRings[keptVertex].find(goneVertex));
 
         vector<int> firstEdge, secondEdge;
 
@@ -186,10 +126,12 @@ int main(int argc, char** argv){
             // Check for removed vertex
             if(mesh.edges[eID] == goneVertex){
                 mesh.edges[eID] = keptVertex;
-                updatedEdges.push_back(eID);
+                updatedEdges.insert(eID);
+                updatedEdges.insert(mesh.otherhalves[eID]);
             }
             else if(mesh.edges[eID] == keptVertex){
-                updatedEdges.push_back(eID);
+                updatedEdges.insert(eID);
+                updatedEdges.insert(mesh.otherhalves[eID]);
             }
             // Check for removed half edge on the first removed face
             if(mesh.otherhalves[eID] == -1){
@@ -210,10 +152,7 @@ int main(int argc, char** argv){
         removedVertices.push_back(goneVertex);
 
         // Update the position of the vertex to the optimal one
-        //cout << "New position: " << glm::to_string(newVertexPosition) << endl;
         mesh.vertices[keptVertex] = newVertexPosition;
-
-        /////////////////////////////////////////////// COLLAPSE ORDERING ///////////////////////////////////////////////
 
         // Update the Quadric for the kept vertex
         quadrics[keptVertex] = quadrics[keptVertex] + quadrics[goneVertex];
@@ -225,32 +164,28 @@ int main(int argc, char** argv){
                 if(mesh.edges[edgeID] == id){
                     // Vertex is A in the triangle
                     if(edgeID % 3 == 0){
-                        updatedEdges.push_back(edgeID);
-                        updatedEdges.push_back(edgeID + 2);
+                        updatedEdges.insert(edgeID);
+                        updatedEdges.insert(edgeID + 2);
                         continue;
                     }
                     else{
-                        updatedEdges.push_back(edgeID);
-                        updatedEdges.push_back(edgeID - 1);
+                        updatedEdges.insert(edgeID);
+                        updatedEdges.insert(edgeID - 1);
                     }
                 }
             }
         }
 
-        // TIMER 1 START
-        auto start1 = std::chrono::high_resolution_clock::now();
         
         // Update the cost for all edges involving the kept vertex
-        for(size_t i = 0; i < updatedEdges.size(); i++){
-            errorCosts[updatedEdges[i]] = getEdgeError(updatedEdges[i]);
-            if(i >= 6){
-                errorCosts[mesh.otherhalves[updatedEdges[i]]] = getEdgeError(mesh.otherhalves[updatedEdges[i]]);
+        for(auto edge: updatedEdges){
+            if(edge >= 0){
+                errorCosts[edge] = getEdgeError(edge);
             }
         }
+
 
         updatedEdges.clear();
-        
-        //cout << "Re-building" << endl;
 
         errorCosts.pop_back();
         errorCosts.pop_back();
@@ -258,25 +193,6 @@ int main(int argc, char** argv){
         errorCosts.pop_back();
         errorCosts.pop_back();
         errorCosts.pop_back();
-
-        /*
-        cout << "Brute force list " << endl;
-        for(size_t i = 0; i < errorCosts.size(); i++){
-            float newCost = getEdgeError(i);
-            if(errorCosts[i] != newCost){
-                cout << i << " Vertex A: " << mesh.edges[i] << " Vertex B: " << mesh.edges[mesh.otherhalves[i]] << " Old cost: " << errorCosts[i] << " New cost: " << newCost << endl;
-            }
-            errorCosts[i] = newCost;
-        }
-        */
-
-        // TIMER 1 END
-        auto end1 = std::chrono::high_resolution_clock::now();
-
-        auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
- 
-        //cout << "Time taken by function 1: " << duration1.count() << " microseconds" << endl;
-
 
         // Re-Generate Collapse Order
         collapseOrder.clear();
@@ -291,16 +207,20 @@ int main(int argc, char** argv){
 
         // DEBUG OBJECT FILE
         if(counter % 50 == 0){
-            cout << "Outputting. " << counter << " iterations completed" << endl;
+            // TIMER 1 END
+            auto end1 = std::chrono::high_resolution_clock::now();
+
+            auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
+
+            cout << "Outputting. " << counter << " iterations completed. Time taken: " << duration1.count() / 1000000 << " seconds." << endl;
             outputToObject(counter);
+
+            start1 = std::chrono::high_resolution_clock::now();
         }
         counter++;
     }
 
     outputToDiredge();
-
-    //outputToObject();
-    //cout << "OUTPUT" << endl;
 
     cout << "Removing vertices" << endl;
     // Remove un-used vertices and cascade the changes
@@ -348,11 +268,10 @@ int main(int argc, char** argv){
         }
         normal = glm::normalize(normal / float(triangleNormals.size()));
         mesh.vertexNormals.push_back(normal);
-        //cout << "Final Normal: " << glm::to_string(normal) << endl;
-        //break;
     }
 
     cout << "Complete" << endl;
+
     // Output to .obj file
     outputToObject();
 }
@@ -416,9 +335,9 @@ void removeFace(unsigned int triangleID, int faceNum){
         mesh.edges[faceID] = mesh.edges[mesh.edges.size()-3];
         mesh.edges[faceID+1] = mesh.edges[mesh.edges.size()-2];
         mesh.edges[faceID+2] = mesh.edges[mesh.edges.size()-1];
-        updatedEdges.push_back(faceID);
-        updatedEdges.push_back(faceID+1);
-        updatedEdges.push_back(faceID+2);
+        updatedEdges.insert(faceID);
+        updatedEdges.insert(faceID+1);
+        updatedEdges.insert(faceID+2);
 
         // For each edge in the triangle
         for(int i = 0; i < 3; i++){
