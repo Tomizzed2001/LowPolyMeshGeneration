@@ -1,7 +1,7 @@
 CC = g++
 CFLAGS = -c -Wall -Iinclude
 
-all: DistanceFields MarchingCubes Simplification
+all: DistanceFields MarchingCubes Simplification ManifoldChecker
 
 DistanceFields: DistanceFields.o
 	$(CC)  DistanceFields.o -o DistanceFields
@@ -20,3 +20,9 @@ Simplification: Simplification.o
 
 Simplification.o: Simplification.cpp Simplification.h
 	$(CC) $(CFLAGS) Simplification.cpp
+
+ManifoldChecker: ManifoldChecker.o
+	$(CC)  ManifoldChecker.o -o ManifoldChecker
+
+ManifoldChecker.o: ManifoldChecker.cpp ManifoldChecker.h
+	$(CC) $(CFLAGS) ManifoldChecker.cpp

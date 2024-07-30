@@ -4,7 +4,7 @@
 
 using namespace std;
 
-#define DESIRED_TRIANGLE_COUNT 6000
+#define DESIRED_TRIANGLE_COUNT 500
 
 int main(int argc, char** argv){
     // Read in the .diredge file provided
@@ -206,13 +206,13 @@ int main(int argc, char** argv){
         sort(collapseOrder.begin(), collapseOrder.end());
 
         // DEBUG OBJECT FILE
-        if(counter % 50 == 0){
+        if(counter % 100 == 0){
             // TIMER 1 END
             auto end1 = std::chrono::high_resolution_clock::now();
 
             auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
 
-            cout << "Outputting. " << counter << " iterations completed. Time taken: " << duration1.count() / 1000000 << " seconds." << endl;
+            cout << "Outputting. " << counter << " iterations completed. Time taken: " << float(duration1.count()) / 1000000.0 << " seconds." << endl;
             outputToObject(counter);
 
             start1 = std::chrono::high_resolution_clock::now();
