@@ -1,10 +1,10 @@
 CC = g++
-CFLAGS = -c -Wall -Iinclude
+CFLAGS = -c -Wall -Iinclude -fopenmp
 
 all: DistanceFields MarchingCubes Simplification ManifoldChecker
 
 DistanceFields: DistanceFields.o
-	$(CC)  DistanceFields.o -o DistanceFields
+	$(CC)  -fopenmp DistanceFields.o -o DistanceFields
 
 DistanceFields.o: DistanceFields.cpp DistanceFields.h
 	$(CC) $(CFLAGS) DistanceFields.cpp

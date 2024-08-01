@@ -22,6 +22,8 @@ struct dirEdge {
     std::vector<int> otherhalves;
 };
 
+bool loopin = false;
+
 dirEdge mesh;
 
 std::vector<std::unordered_set<unsigned int>> oneRings;

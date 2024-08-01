@@ -1,6 +1,7 @@
 // DistanceFields.h
 #pragma once
 
+#include <stdio.h>
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -11,6 +12,7 @@
 #include <string>
 #include <cmath>
 #include <iomanip>
+#include <chrono>
 #include "glm/glm.hpp"
 
 struct indexFaced {
@@ -23,6 +25,8 @@ indexFaced inputMesh;
 
 std::vector<glm::vec3> fNormals;
 std::vector<glm::vec3> eNormals;
+
+float sizeOfGrid;
 
 void fitToGrid(float *point, bool isMin);
 

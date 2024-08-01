@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define GRID_SIZE 0.05
+#define GRID_SIZE_MAX 64.0
 
 int main(int argc, char** argv)
 {
@@ -82,16 +82,31 @@ int main(int argc, char** argv)
     }
     dField.close();
     
+    // TIMER START
+    auto start1 = std::chrono::high_resolution_clock::now();
+
+    cout << "Calculating face normals" << endl;
     // Calculate face normals from scratch
     fNormals.resize(inputMesh.faces.size());
+    #pragma omp parallel for
     for(size_t fID = 0; fID < inputMesh.faces.size(); fID++){
         glm::vec3 AB = inputMesh.vertices[inputMesh.faces[fID].y] - inputMesh.vertices[inputMesh.faces[fID].x];
         glm::vec3 AC = inputMesh.vertices[inputMesh.faces[fID].z] - inputMesh.vertices[inputMesh.faces[fID].x];
         fNormals[fID] = glm::normalize(glm::cross(AB, AC));
     }
 
+    cout << "Calculating vertex normals" << endl;
+    // Calculate the vertex normals from scratch
+    inputMesh.vNormals.resize(inputMesh.vertices.size());
+    #pragma omp parallel for
+    for(size_t vID = 0; vID < inputMesh.vertices.size(); vID++){
+        inputMesh.vNormals[vID] = getVertexNormal(vID);
+    }
+
+    cout << "Calculating edge normals" << endl;
     // Calculate the edge normals from scratch
     eNormals.resize(inputMesh.faces.size()*3);
+    #pragma omp parallel for
     for(size_t fID = 0; fID < inputMesh.faces.size(); fID++){
         // AB edge
         eNormals[fID * 3] = glm::normalize((findOtherHalfNormal(inputMesh.faces[fID].x, inputMesh.faces[fID].y) + fNormals[fID]) / float(2));
@@ -101,27 +116,35 @@ int main(int argc, char** argv)
         eNormals[fID * 3 + 2] = glm::normalize((findOtherHalfNormal(inputMesh.faces[fID].z, inputMesh.faces[fID].x) + fNormals[fID]) / float(2));
     }
 
-    // Calculate the vertex normals from scratch
-    inputMesh.vNormals.resize(inputMesh.vertices.size());
-    for(size_t vID = 0; vID < inputMesh.vertices.size(); vID++){
-        inputMesh.vNormals[vID] = getVertexNormal(vID);
-    }
+    sizeOfGrid = max((maxPoint[0] - minPoint[0]), max((maxPoint[1] - minPoint[1]),(maxPoint[2] - minPoint[2]))) / GRID_SIZE_MAX;
+
+    cout << sizeOfGrid << endl;
 
     //Round the points so the grid fits nicely
     fitToGrid(minPoint, true);
     fitToGrid(maxPoint, false);
 
     // Set up the scalar field
-    int xSize = round(((maxPoint[0] - minPoint[0]) / GRID_SIZE) + 1);
-    int ySize = round(((maxPoint[1] - minPoint[1]) / GRID_SIZE) + 1);
-    int zSize = round(((maxPoint[2] - minPoint[2]) / GRID_SIZE) + 1);
+    int xSize = round(((maxPoint[0] - minPoint[0]) / sizeOfGrid) + 1);
+    int ySize = round(((maxPoint[1] - minPoint[1]) / sizeOfGrid) + 1);
+    int zSize = round(((maxPoint[2] - minPoint[2]) / sizeOfGrid) + 1);
     std::vector<std::vector<std::vector<float>>> scalarField(xSize, vector<vector<float>>(ySize, vector<float>(zSize)));
 
+
+    cout << "Beginning distance calculations" << endl;
+    
     // Loop through all points in the scalar field and get the distance 
     // from them to the closest triangle
-    for (float xID = 0, x = minPoint[0]; xID < xSize; xID++, x+=GRID_SIZE) {
-		for (float yID = 0, y = minPoint[1]; yID < ySize; yID++, y+=GRID_SIZE) {
-			for (float zID = 0, z = minPoint[2]; zID < zSize; zID++, z+=GRID_SIZE) {
+    float xStart = minPoint[0];
+    #pragma omp parallel for
+    for (int xID = 0; xID < xSize; xID++) {
+        float x = xStart + (xID * sizeOfGrid);
+        float yStart = minPoint[1];
+		for (int yID = 0; yID < ySize; yID++) {
+            float y = yStart + (yID * sizeOfGrid);
+            float zStart = minPoint[2];
+			for (int zID = 0; zID < zSize; zID++) {
+                float z = zStart + (zID * sizeOfGrid);
                 float closestDistance = 1000;
                 for(size_t faceID = 0; faceID < inputMesh.faces.size(); faceID++){
                     float distance = distanceToTriangle(
@@ -145,14 +168,24 @@ int main(int argc, char** argv)
         }
     }
 
+    // TIMER 1 END
+    auto end1 = std::chrono::high_resolution_clock::now();
+
+    auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
+
+    cout << "Time taken: " << float(duration1.count()) / 1000000.0 << " seconds." << endl;
+
     // Dump the scalar field to a .txt file
     std::ofstream out("scalarField.txt");
     out << xSize << " " << ySize << " " << zSize << endl;
     for (int x = 0; x < xSize; x++) {
 		for (int y = 0; y < ySize; y++) {
 			for (int z = 0; z < zSize; z++) {
-                // Truncate at 4 decimal places and add 5 as the 5th (0.00005)
-				out << std::fixed << setprecision(4) << scalarField[x][y][z] << " ";
+                if((x == 0 || x == xSize-1 || y == 0 || y == ySize - 1 || z == 0 || z == zSize -1) && (scalarField[x][y][z] >= 0)){
+                    out << std::fixed << setprecision(4) << -0.0005 << endl;
+                }else{
+				    out << std::fixed << setprecision(4) << scalarField[x][y][z] << " ";
+                }
 			}
             out << endl;
 		}
@@ -173,10 +206,10 @@ void fitToGrid(float *point, bool isMin){
     }
     for(int i = 0; i < 3; i++){
         if(point[i] < 0){       // Ensure the co-ordinate stays negative
-            point[i] = -(abs(point[i]) + (GRID_SIZE - fmod(abs(point[i]), GRID_SIZE))) + (sign * 2 * GRID_SIZE);
+            point[i] = -(abs(point[i]) + (sizeOfGrid - fmod(abs(point[i]), sizeOfGrid))) + (sign * 2 * sizeOfGrid);
         }  
         else{                   // Co-ordinate
-            point[i] = point[i] + (GRID_SIZE - fmod(point[i], GRID_SIZE)) + (sign * 2 * GRID_SIZE);
+            point[i] = point[i] + (sizeOfGrid - fmod(point[i], sizeOfGrid)) + (sign * 2 * sizeOfGrid);
         }
     }
 }
