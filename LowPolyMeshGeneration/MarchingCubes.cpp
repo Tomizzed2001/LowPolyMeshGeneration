@@ -31,6 +31,9 @@ int main(int argc, char** argv){
 	}
 	dField.close();
 
+	// TIMER START
+    auto start1 = std::chrono::high_resolution_clock::now();
+
 	array<int, 3> empty = {-1,-1,-1};
 	cubeEdges.resize(xDimension-1, vector<vector<std::array<int,3>>>(yDimension-1, vector<std::array<int,3>>(zDimension-1, empty)));
 
@@ -203,6 +206,13 @@ int main(int argc, char** argv){
 			}
 		}
 	}
+
+	// TIMER 1 END
+    auto end1 = std::chrono::high_resolution_clock::now();
+
+    auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
+
+    cout << "Time taken: " << float(duration1.count()) / 1000000.0 << " seconds." << endl;
 
 	// Write the output to a directed edge file format
 	ofstream out("out.diredge");

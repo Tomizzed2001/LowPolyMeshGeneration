@@ -8,6 +8,7 @@
 #include <fstream>
 #include <string>
 #include <cmath>
+#include <chrono>
 #include "glm/glm.hpp"
 
 int cubeEdgeLookUp[12][4] = {

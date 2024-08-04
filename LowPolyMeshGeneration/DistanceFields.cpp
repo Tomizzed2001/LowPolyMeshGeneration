@@ -118,7 +118,7 @@ int main(int argc, char** argv)
 
     sizeOfGrid = max((maxPoint[0] - minPoint[0]), max((maxPoint[1] - minPoint[1]),(maxPoint[2] - minPoint[2]))) / GRID_SIZE_MAX;
 
-    cout << sizeOfGrid << endl;
+    //cout << sizeOfGrid << endl;
 
     //Round the points so the grid fits nicely
     fitToGrid(minPoint, true);
@@ -330,9 +330,33 @@ glm::vec3 getVertexNormal(unsigned int vertexID){
     vector<glm::vec3> triangleNormals;
     // Find the triangles using the vertex
     for(size_t fID = 0; fID < inputMesh.faces.size(); fID++){
+        /**/
+        if(inputMesh.faces[fID].x == vertexID){
+            // Incident edges are BA CA
+            glm::vec3 BA = glm::normalize(inputMesh.vertices[inputMesh.faces[fID].x] - inputMesh.vertices[inputMesh.faces[fID].y]);
+            glm::vec3 CA = glm::normalize(inputMesh.vertices[inputMesh.faces[fID].x] - inputMesh.vertices[inputMesh.faces[fID].z]);
+            float angle = glm::acos( glm::dot(BA, CA) );
+            triangleNormals.push_back(angle * fNormals[fID]);
+        }
+        else if(inputMesh.faces[fID].y == vertexID){
+            // Incident edges are AB CB
+            glm::vec3 AB = glm::normalize(inputMesh.vertices[inputMesh.faces[fID].y] - inputMesh.vertices[inputMesh.faces[fID].x]);
+            glm::vec3 CB = glm::normalize(inputMesh.vertices[inputMesh.faces[fID].y] - inputMesh.vertices[inputMesh.faces[fID].z]);
+            float angle = glm::acos( glm::dot(AB, CB) );
+            triangleNormals.push_back(angle * fNormals[fID]);
+        } 
+        else if(inputMesh.faces[fID].z == vertexID){
+            // Incident edges are AC BC
+            glm::vec3 AC = glm::normalize(inputMesh.vertices[inputMesh.faces[fID].z] - inputMesh.vertices[inputMesh.faces[fID].x]);
+            glm::vec3 BC = glm::normalize(inputMesh.vertices[inputMesh.faces[fID].z] - inputMesh.vertices[inputMesh.faces[fID].y]);
+            float angle = glm::acos( glm::dot(AC, BC) );
+            triangleNormals.push_back(angle * fNormals[fID]);
+        } 
+        /*
         if(inputMesh.faces[fID].x == vertexID || inputMesh.faces[fID].y == vertexID || inputMesh.faces[fID].z == vertexID){
             triangleNormals.push_back(fNormals[fID]);
         }
+        */
     }
     // Average the triangle normals
     glm::vec3 normal = glm::vec3(0,0,0);

@@ -214,16 +214,12 @@ int main(int argc, char** argv){
         sort(collapseOrder.begin(), collapseOrder.end());
 
         // DEBUG OBJECT FILE
+        /*
+        */
         if(counter % 200 == 0){
-            // TIMER 1 END
-            auto end1 = std::chrono::high_resolution_clock::now();
-
-            auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
-
-            cout << "Outputting. " << counter << " iterations completed. Time taken: " << float(duration1.count()) / 1000000.0 << " seconds." << endl;
-            outputToObject(counter);
-
-            start1 = std::chrono::high_resolution_clock::now();
+            //outputToObject(counter);
+            cout << counter << " iterations completed." << endl;
+            //start1 = std::chrono::high_resolution_clock::now();
         }
         counter++;
     }
@@ -279,6 +275,12 @@ int main(int argc, char** argv){
     }
 
     cout << "Complete" << endl;
+    // TIMER 1 END
+    auto end1 = std::chrono::high_resolution_clock::now();
+
+    auto duration1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
+
+    cout << "Outputting. " << counter << " iterations completed. Time taken: " << float(duration1.count()) / 1000000.0 << " seconds." << endl;
 
     // Output to .obj file
     outputToObject();
@@ -441,20 +443,6 @@ float getEdgeError(unsigned int edgeID){
     // cout << edgeID << endl;
     // Check if it is a "valid" collapse
     //std::unordered_set<unsigned int> aOneRing = findOneRing(mesh.edges[edgeID]);
-    /*
-    if(loopin){
-        cout << "========== vertex " << mesh.edges[edgeID] << "========" << endl;
-        for(auto i: aOneRing){
-            cout << i << ", ";
-        }
-        cout << endl;
-        for(auto id: oneRings[mesh.edges[edgeID]]) {
-            cout << id << ", ";
-        }
-        cout << endl;
-        cout << "================================" << endl;
-    }
-    */
     //std::unordered_set<unsigned int> bOneRing = findOneRing(mesh.edges[mesh.otherhalves[edgeID]]);
     int intersectionCount = 0;
 
@@ -635,77 +623,3 @@ int checkForFlip(unsigned int goneVertexID, unsigned int keptVertexID, glm::vec3
 
     return 0;
 }
-
-/*
-int checkForFlip(unsigned int goneVertexID, unsigned int keptVertexID, glm::vec3 newVertexPosition){
-    // Loop through all the faces to find each triangle the vertex is used in
-    for(size_t edgeID = 0; edgeID < mesh.edges.size(); edgeID++){
-        // Find a triangle
-        if(mesh.edges[edgeID] == goneVertexID){
-            int triangleID = (edgeID / 3) * 3;
-            glm::vec3 A = mesh.vertices[mesh.edges[triangleID]];
-            glm::vec3 B = mesh.vertices[mesh.edges[triangleID + 1]];
-            glm::vec3 C = mesh.vertices[mesh.edges[triangleID + 2]];
-            // If the triangle will be removed skip this one
-            if(mesh.edges[triangleID] == keptVertexID || mesh.edges[triangleID + 1] == keptVertexID || mesh.edges[triangleID + 2] == keptVertexID){
-                continue;
-            }
-            else{
-                // Get the normal of the triangle
-                glm::vec3 oldNorm = glm::normalize(glm::cross(B-A, C-A));
-                if(mesh.edges[triangleID] == goneVertexID){
-                    A = newVertexPosition;
-                }
-                else if(mesh.edges[triangleID + 1] == goneVertexID){
-                    B = newVertexPosition;
-                }
-                else{
-                    C = newVertexPosition;
-                }
-                if(glm::cross(B-A, C-A) == glm::vec3(0,0,0)){
-                    return -1;
-                }
-                glm::vec3 newNorm = glm::normalize(glm::cross(B-A, C-A));
-                // Check if the normal has been flipped
-                if(glm::dot(oldNorm, newNorm) < 0){
-                    return -1;
-                }
-            }
-        }
-        if(mesh.edges[edgeID] == keptVertexID){
-            int triangleID = (edgeID / 3) * 3;
-            glm::vec3 A = mesh.vertices[mesh.edges[triangleID]];
-            glm::vec3 B = mesh.vertices[mesh.edges[triangleID + 1]];
-            glm::vec3 C = mesh.vertices[mesh.edges[triangleID + 2]];
-            // If the triangle will be removed skip this one
-            if(mesh.edges[triangleID] == goneVertexID || mesh.edges[triangleID + 1] == goneVertexID || mesh.edges[triangleID + 2] == goneVertexID){
-                continue;
-            }
-            else{
-                // Get the normal of the triangle
-                glm::vec3 oldNorm = glm::normalize(glm::cross(B-A, C-A));
-                if(mesh.edges[triangleID] == keptVertexID){
-                    A = newVertexPosition;
-                }
-                else if(mesh.edges[triangleID + 1] == keptVertexID){
-                    B = newVertexPosition;
-                }
-                else{
-                    C = newVertexPosition;
-                }
-                if(glm::cross(B-A, C-A) == glm::vec3(0,0,0)){
-                    return -1;
-                }
-                glm::vec3 newNorm = glm::normalize(glm::cross(B-A, C-A));
-                // Check if the normal has been flipped
-                if(glm::dot(oldNorm, newNorm) < 0){
-                    return -1;
-                }
-            }
-        }
-    }
-
-    return 0;
-}
-
-*/
