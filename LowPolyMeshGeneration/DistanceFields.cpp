@@ -7,6 +7,8 @@
 using namespace std;
 
 #define GRID_SIZE_MAX 64.0
+#define SEARCH_RADIUS 5
+
 
 int main(int argc, char** argv)
 {
@@ -85,6 +87,8 @@ int main(int argc, char** argv)
     // TIMER START
     auto start1 = std::chrono::high_resolution_clock::now();
 
+    /*
+    */
     cout << "Calculating face normals" << endl;
     // Calculate face normals from scratch
     fNormals.resize(inputMesh.faces.size());
@@ -118,7 +122,7 @@ int main(int argc, char** argv)
 
     sizeOfGrid = max((maxPoint[0] - minPoint[0]), max((maxPoint[1] - minPoint[1]),(maxPoint[2] - minPoint[2]))) / GRID_SIZE_MAX;
 
-    //cout << sizeOfGrid << endl;
+    cout << sizeOfGrid << endl;
 
     //Round the points so the grid fits nicely
     fitToGrid(minPoint, true);
@@ -130,13 +134,80 @@ int main(int argc, char** argv)
     int zSize = round(((maxPoint[2] - minPoint[2]) / sizeOfGrid) + 1);
     std::vector<std::vector<std::vector<float>>> scalarField(xSize, vector<vector<float>>(ySize, vector<float>(zSize)));
 
+    // Divide the grid into bounding boxes
+    int xBoundingBoxes = (xSize / 8) + (xSize % 8 != 0);
+    int yBoundingBoxes = (ySize / 8) + (ySize % 8 != 0);
+    int zBoundingBoxes = (zSize / 8) + (zSize % 8 != 0);
+    cout << "Bounding sizes " << xBoundingBoxes << ", " << yBoundingBoxes << ", " << zBoundingBoxes << endl;
+    cout << "Scalar Field Size " << xSize << ", " << ySize << ", " << zSize << endl;
+
+    float sizeInX = float(maxPoint[0] - minPoint[0]) / float(xBoundingBoxes);
+    float sizeInY = float(maxPoint[1] - minPoint[1]) / float(yBoundingBoxes);
+    float sizeInZ = float(maxPoint[2] - minPoint[2]) / float(zBoundingBoxes);
+    cout << "Max point " << minPoint[0] << ", " << minPoint[1] << ", " << minPoint[2] << endl;
+    cout << "Size of one bounding box " << sizeInX << ", " << sizeInY << ", " << sizeInZ << endl;
+
+    boundingBoxNodes.resize(xBoundingBoxes, vector<vector<glm::vec3>>(yBoundingBoxes, vector<glm::vec3>(zBoundingBoxes)));
+    int count = 0;
+    for(int x = 0; x < xBoundingBoxes; x++){
+        for(int y = 0; y < yBoundingBoxes; y++){
+            for(int z = 0; z < zBoundingBoxes; z++){
+                boundingBoxNodes[x][y][z] = glm::vec3(minPoint[0] + (x*sizeInX), minPoint[1] + (y*sizeInY), minPoint[2] + (z*sizeInZ));
+                count++;
+            }
+            count++;
+        }
+        count++;
+    }
+    cout << " count " << count << endl;
+
+    cout << glm::to_string(boundingBoxNodes[0][0][0]) << endl;
+
+    // Populate the bounding boxes
+    vector<vector<vector<unordered_set<unsigned int>>>> boundingBoxTriangles(xBoundingBoxes, vector<vector<unordered_set<unsigned int>>>(yBoundingBoxes, vector<unordered_set<unsigned int>>(zBoundingBoxes)));
+    // For each triangle in the mesh, allocate bounding box(es)
+    #pragma omp parallel for
+    for(size_t fID = 0; fID < inputMesh.faces.size(); fID++){
+        // For each vertex on the face
+        for(int i = 0; i < 3; i++){
+            glm::vec3 vert = inputMesh.vertices[inputMesh.faces[fID][i]];
+            // For each bounding box
+            for(int x = 0; x < xBoundingBoxes; x++){
+                for(int y = 0; y < yBoundingBoxes; y++){
+                    for(int z = 0; z < zBoundingBoxes; z++){
+                        glm::vec3 topNode = boundingBoxNodes[x][y][z] + glm::vec3(sizeInX, sizeInY, sizeInZ);
+                        // Test if within the bounds of the box
+                        if(vert.x >= boundingBoxNodes[x][y][z].x && vert.y >= boundingBoxNodes[x][y][z].y && vert.z >= boundingBoxNodes[x][y][z].z &&
+                        vert.x <= topNode.x && vert.y <= topNode.y && vert.z <= topNode.z){
+                            boundingBoxTriangles[x][y][z].insert(fID);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    cout << "ge" << endl;
+
+    int tally = 0;
+    for(int x = 0; x < xBoundingBoxes; x++){
+        for(int y = 0; y < yBoundingBoxes; y++){
+            for(int z = 0; z < zBoundingBoxes; z++){
+                tally += boundingBoxTriangles[x][y][z].size();
+            }
+        }
+    }
+
+    cout << tally << endl;
+
+    //return 0;
 
     cout << "Beginning distance calculations" << endl;
     
     // Loop through all points in the scalar field and get the distance 
     // from them to the closest triangle
     float xStart = minPoint[0];
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for (int xID = 0; xID < xSize; xID++) {
         float x = xStart + (xID * sizeOfGrid);
         float yStart = minPoint[1];
@@ -146,19 +217,70 @@ int main(int argc, char** argv)
 			for (int zID = 0; zID < zSize; zID++) {
                 float z = zStart + (zID * sizeOfGrid);
                 float closestDistance = 1000;
-                for(size_t faceID = 0; faceID < inputMesh.faces.size(); faceID++){
+                // Determine which bounding boxes are within the radius
+                vector<array<int,3>> boxes;
+                for(int xBB = 0; xBB < xBoundingBoxes; xBB++){
+                    for(int yBB = 0; yBB < yBoundingBoxes; yBB++){
+                        for(int zBB = 0; zBB < zBoundingBoxes; zBB++){
+                            glm::vec3 bb = boundingBoxNodes[xBB][yBB][zBB];
+                            if(((x - bb.x) * (x - bb.x) + (y - bb.y) * (y - bb.y) + (z - bb.z) * (z - bb.z)) < (SEARCH_RADIUS * sizeOfGrid) * (SEARCH_RADIUS * sizeOfGrid)){
+                                boxes.push_back(array<int, 3>{xBB, yBB, zBB});
+                                boxes.push_back(array<int, 3>{xBB-1, yBB, zBB});
+                                boxes.push_back(array<int, 3>{xBB, yBB-1, zBB});
+                                boxes.push_back(array<int, 3>{xBB, yBB, zBB-1});
+                                boxes.push_back(array<int, 3>{xBB, yBB-1, zBB-1});
+                                boxes.push_back(array<int, 3>{xBB-1, yBB-1, zBB});
+                                boxes.push_back(array<int, 3>{xBB-1, yBB, zBB-1});
+                                boxes.push_back(array<int, 3>{xBB-1, yBB-1, zBB-1});
+                            }
+                        }
+                    }
+                }
+                // BROKE HERE START
+                unordered_set<unsigned int> triangles;
+                for(auto box : boxes){
+                    if(box[0] < 0 || box[1] < 0 || box[2] < 0){
+                        continue;
+                    }
+                    else{
+                        for(auto tri : boundingBoxTriangles[box[0]][box[1]][box[2]]){
+                            triangles.insert(tri);
+                        }
+                    }
+                }
+
+
+                for(auto t : triangles){
                     float distance = distanceToTriangle(
                         glm::vec3(x,y,z),               // Point
-                        inputMesh.vertices[inputMesh.faces[faceID].x],      // Vertex A
-                        inputMesh.vertices[inputMesh.faces[faceID].y],      // Vertex B
-                        inputMesh.vertices[inputMesh.faces[faceID].z],      // Vertex C
-                        faceID                          // Face ID
+                        inputMesh.vertices[inputMesh.faces[t].x],      // Vertex A
+                        inputMesh.vertices[inputMesh.faces[t].y],      // Vertex B
+                        inputMesh.vertices[inputMesh.faces[t].z],      // Vertex C
+                        t                          // Face ID
                     );
 
                     if(abs(distance) < abs(closestDistance)){
                         closestDistance = distance;
                     }
                 }
+                
+                if(closestDistance == 1000){
+                    for(size_t faceID = 0; faceID < inputMesh.faces.size(); faceID++){
+                        float distance = distanceToTriangle(
+                            glm::vec3(x,y,z),               // Point
+                            inputMesh.vertices[inputMesh.faces[faceID].x],      // Vertex A
+                            inputMesh.vertices[inputMesh.faces[faceID].y],      // Vertex B
+                            inputMesh.vertices[inputMesh.faces[faceID].z],      // Vertex C
+                            faceID                          // Face ID
+                        );
+                        //cout << "Here" << endl;
+
+                        if(abs(distance) < abs(closestDistance)){
+                            closestDistance = distance;
+                        }
+                    }
+                }
+                
                 // Remove any "negative" zeros
                 if(closestDistance <= 0.0001 && closestDistance >= -0.0001){
                     closestDistance = 0;
@@ -251,6 +373,7 @@ float distanceToTriangle(glm::vec3 P, glm::vec3 A, glm::vec3 B, glm::vec3 C, uns
 
         return s * abs(dist2Plane);
     }
+
     
     // Check for closest to vertex A
     float dAB = glm::dot(AB,AP);
