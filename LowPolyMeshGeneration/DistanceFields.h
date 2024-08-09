@@ -43,4 +43,3 @@ glm::vec3 getVertexNormal(unsigned int vertexID);
 
 glm::vec3 findOtherHalfNormal(unsigned int v0, unsigned int v1);
 
-//std::unordered_set<glm::vec3> getBBs(glm::vec3 point);

@@ -101,7 +101,7 @@ int main(int argc, char** argv){
 	}
 	*/
 
-
+	cout << "Beginning Marching Cubes" << endl;
 	// March through the distance field
 	// TEST CASE IS 16 15 18
 	for(int x = 0; x < xDimension - 1; x++){
@@ -112,6 +112,10 @@ int main(int argc, char** argv){
 				int caseNum = 0;
 				for(int i = 0; i < 8; i++){
 					// Check if inside the mesh
+					if (scalarField[x+vertPos[i][0]][y+vertPos[i][1]][z+vertPos[i][2]] == 1000){
+						caseNum = 0;
+						break;
+					}
 					if (scalarField[x+vertPos[i][0]][y+vertPos[i][1]][z+vertPos[i][2]] >= ISOVALUE) {
 						caseNum += pow(2, i);
 					}
@@ -165,6 +169,7 @@ int main(int argc, char** argv){
 		//break;
 	} 
 
+	cout << "Generating data structure" << endl;
 	// Build the directed edge data structure from the triangle soup.
 	for(size_t vID = 0; vID < triSoup.size(); vID++){
 		// Get the vertex index and place if not found.

@@ -4,7 +4,7 @@
 
 using namespace std;
 
-#define DESIRED_TRIANGLE_COUNT 200
+#define DESIRED_TRIANGLE_COUNT 150
 
 int main(int argc, char** argv){
     // Read in the .diredge file provided
@@ -52,10 +52,13 @@ int main(int argc, char** argv){
     outputToObject(0);
 
     cout << "Number of triangles: " << mesh.edges.size() / 3 << endl;
-    cout << "Number of mesh.vertices: " << mesh.vertices.size() / 3 << endl;
+    cout << "Number of vertices: " << mesh.vertices.size() / 3 << endl;
+
+    // TIMER 1 START
+    auto start1 = std::chrono::high_resolution_clock::now();
 
     /////////////////////////////////////////////// COLLAPSE ORDERING ///////////////////////////////////////////////
-
+    cout << "Calculating Q for each vertex" << endl;
     // Calculate the Quadric Error Metric for each half-edge
     // Find Q for each vertex
     quadrics.resize(mesh.vertices.size());
@@ -66,6 +69,7 @@ int main(int argc, char** argv){
         oneRings.push_back(findOneRing(vID));
     }
 
+    cout << "Calculating error for each edge" << endl;
     // Make a vector of the collapse order as a set of pairs <error, edgeID>
     optimalVertexPosition.resize(mesh.otherhalves.size());
     vector<pair<float, int>> collapseOrder;
@@ -86,12 +90,16 @@ int main(int argc, char** argv){
     vector<unsigned int> removedVertices;
     int counter = 1;
 
-    // TIMER 1 START
-    auto start1 = std::chrono::high_resolution_clock::now();
     loopin = true;
+
 
     // Complete the collapse in the order of lowest error cost first
     while((mesh.edges.size() / 3) > DESIRED_TRIANGLE_COUNT && !collapseOrder.empty()){
+        // Stop if the error is too great
+        if(collapseOrder[0].first > 2.0){
+            cout << "Stopping due to error cost being too great" << endl;
+            break;
+        }
         // Get the edge to collapse
         unsigned int edge = collapseOrder[0].second;
         unsigned int otherEdge = mesh.otherhalves[edge];
@@ -216,7 +224,7 @@ int main(int argc, char** argv){
         // DEBUG OBJECT FILE
         /*
         */
-        if(counter % 200 == 0){
+        if(counter % 1000 == 0){
             //outputToObject(counter);
             cout << counter << " iterations completed." << endl;
             //start1 = std::chrono::high_resolution_clock::now();
@@ -224,7 +232,6 @@ int main(int argc, char** argv){
         counter++;
     }
 
-    outputToDiredge();
 
     cout << "Removing vertices" << endl;
     // Remove un-used vertices and cascade the changes
@@ -244,6 +251,8 @@ int main(int argc, char** argv){
             }
         }
     }
+
+    outputToDiredge();
 
     cout << "Producing Normals" << endl;
     // Produce the smooth vertex normals for the output
@@ -310,6 +319,7 @@ std::unordered_set<unsigned int> findOneRing(unsigned int vertexID){
     std::unordered_set<unsigned int> oneRing;
 
     // Loop through the mesh.edges finding each triangle the vertex is part of
+    //#pragma omp parallel for
     for(size_t edgeID = 0; edgeID < mesh.edges.size(); edgeID++){
         if(mesh.edges[edgeID] == vertexID){
             // Vertex is A in the triangle
@@ -585,8 +595,14 @@ float getEdgeLength(unsigned int edgeID){
 }
 
 int checkForFlip(unsigned int goneVertexID, unsigned int keptVertexID, glm::vec3 newVertexPosition){
+    volatile bool found = false;
     // Loop through all the faces to find each triangle the vertex is used in
+    #pragma omp parallel for shared(found)
     for(size_t edgeID = 0; edgeID < mesh.edges.size(); edgeID++){
+        if(found){
+            continue;
+        }
+
         // Find a triangle
         if(mesh.edges[edgeID] == goneVertexID){
             int triangleID = (edgeID / 3) * 3;
@@ -610,16 +626,21 @@ int checkForFlip(unsigned int goneVertexID, unsigned int keptVertexID, glm::vec3
                     C = newVertexPosition;
                 }
                 if(glm::cross(B-A, C-A) == glm::vec3(0,0,0)){
-                    return -1;
+                    found = true;
+                    //return -1;
                 }
                 glm::vec3 newNorm = glm::normalize(glm::cross(B-A, C-A));
                 // Check if the normal has been flipped
                 if(glm::dot(oldNorm, newNorm) < 0){
-                    return -1;
+                    found = true;
+                    //return -1;
                 }
             }
         }
     }
 
+    if(found){
+        return -1;
+    }
     return 0;
 }

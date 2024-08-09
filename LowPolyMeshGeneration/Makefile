@@ -16,7 +16,7 @@ MarchingCubes.o: MarchingCubes.cpp MarchingCubes.h
 	$(CC) $(CFLAGS) MarchingCubes.cpp
 
 Simplification: Simplification.o
-	$(CC)  Simplification.o -o Simplification
+	$(CC)  -fopenmp Simplification.o -o Simplification
 
 Simplification.o: Simplification.cpp Simplification.h
 	$(CC) $(CFLAGS) Simplification.cpp
