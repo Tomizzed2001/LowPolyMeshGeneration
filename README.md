@@ -9,7 +9,9 @@ To compile the programs:
 $ make
 
 To execute the programs:
-$ ./DistanceFields input.obj    
+$ ./DistanceFields input.obj
+
 $ ./MarchingCubes signedDistanceField.txt
+
 $ ./Simplification isosurface.diredge
 
