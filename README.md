@@ -16,3 +16,5 @@ $ ./MarchingCubes signedDistanceField.txt
 
 $ ./Simplification isosurface.diredge
 
+$ ./ManifoldChecker (.obj / .diredge file) 
+
