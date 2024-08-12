@@ -31,6 +31,23 @@ int main(int argc, char** argv){
 	}
 	dField.close();
 
+	// Get the optional inputs from the user
+    bool outputOBJ = false;
+    bool answered = false;
+    string answer;
+    while (!answered)
+    {
+        cout << "Would you like to output an OBJ file? (y/n)";
+        cin >> answer;
+        if(answer == "y" || answer == "Y"){
+			outputOBJ = true;
+            answered = true;
+        }
+        if(answer == "n" || answer == "N"){
+            answered = true;
+        }
+    }
+
 	// TIMER START
     auto start1 = std::chrono::high_resolution_clock::now();
 
@@ -43,71 +60,11 @@ int main(int argc, char** argv){
 	float distA;
 	float distB;
 
-	//xDimension = 20;
-	//yDimension = 14;
-	//zDimension = 14;
-	/*
-	for(int i = 0; i < 256; i++){
-		getSingleCube(i);
-		// Build the directed edge data structure from the triangle soup.   
-		for(size_t vID = 0; vID < triSoup.size(); vID++){
-			// Get the vertex index and place if not found.
-			int vertex = getVertexID(triSoup[vID]);
-			// Add the vertex id to the face
-			faces.push_back(vertex);
-		}
- 
-		// Index storage variables
-		int v0, v1;
-
-		otherHalf.resize(faces.size(),-1);
-
-		// Get the other half
-		for(size_t eID = 0; eID < faces.size(); eID++){
-			// Since faces form the edges check if it needs to search for 2 to 0 edge
-			if (eID % 3 == 2){
-				v0 = faces[eID];
-				v1 = faces[eID-2];
-			}
-			else{
-				v0 = faces[eID];
-				v1 = faces[eID+1];
-			}
-
-			// Look for v1 to v0
-			for(size_t fID = 0; fID < faces.size(); fID+=3){
-				if(faces[fID] == v1 && faces[fID+1] == v0){
-					otherHalf[eID] = fID + 0;
-					break;
-				}
-				else if(faces[fID+1] == v1 && faces[fID+2] == v0){
-					otherHalf[eID] = fID + 1;
-					break;
-				}
-				else if(faces[fID+2] == v1 && faces[fID] == v0){
-					otherHalf[eID] = fID + 2;
-					break;
-				}
-			}
-		}
-
-		outputToObject(i);
-
-		vertices.clear();
-		faces.clear();
-		firstDirectedEdges.clear();
-		otherHalf.clear();
-		triSoup.clear();
-	}
-	*/
-
 	cout << "Beginning Marching Cubes" << endl;
 	// March through the distance field
-	// TEST CASE IS 16 15 18
 	for(int x = 0; x < xDimension - 1; x++){
 		for(int y = 0; y < yDimension - 1; y++){
 			for(int z = 0; z < zDimension - 1; z++){
-				//cout << "New Cube" << endl;
 				// Get the state of the cube
 				int caseNum = 0;
 				for(int i = 0; i < 8; i++){
@@ -119,25 +76,19 @@ int main(int argc, char** argv){
 					if (scalarField[x+vertPos[i][0]][y+vertPos[i][1]][z+vertPos[i][2]] >= ISOVALUE) {
 						caseNum += pow(2, i);
 					}
-					//cout << "Point: " << x+vertPos[i][0] << "," << y+vertPos[i][1] << "," << z+vertPos[i][2] << " Distance: " << scalarField[x+vertPos[i][0]][y+vertPos[i][1]][z+vertPos[i][2]] << " CaseNum: " << caseNum <<  endl;
 				}
-				//cout << "Case Num: " << caseNum << endl;
 
 				// Use lookup table to find case
 				int numTriangles = triangleTable[caseNum][0];
-				//cout << "Number of triangles: " << numTriangles << endl;
 				for(int i = 1; i < (numTriangles*3)+1; i++){
 					// Edge to place vertex
 					int edge = triangleTable[caseNum][i];
-					//cout << "Edge: " << edge << endl;
 
 					// Store the edge vertices
 					for(int j = 0; j < 3; j++){
 						vertexA[j] = vertPos[edgeTable[edge][0]][j];
 						vertexB[j] = vertPos[edgeTable[edge][1]][j];
 					}
-					//cout << "VertexA: " << glm::to_string(vertexA) << endl;
-					//cout << "VertexB: " << glm::to_string(vertexB) << endl;
 
 					// Add the current position to put into world co-ords
 					vertexA = vertexA + glm::vec3(x,y,z);
@@ -158,15 +109,9 @@ int main(int argc, char** argv){
 					else{
 						triSoup.push_back(triSoup[currentEdgeValue]);
 					}
-
-					// Get vertex position on the edge using linear interpolation
-					//triSoup.push_back((vertexA + vertexB)/float(2.0));
 				}
-				//break; 
 			}
-			//break;
 		}
-		//break;
 	} 
 
 	cout << "Generating data structure" << endl;
@@ -220,7 +165,7 @@ int main(int argc, char** argv){
     cout << "Time taken: " << float(duration1.count()) / 1000000.0 << " seconds." << endl;
 
 	// Write the output to a directed edge file format
-	ofstream out("out.diredge");
+	ofstream out("isosurface.diredge");
 	for(size_t i = 0; i < mesh.vertices.size(); i++){
 		out << "v " << std::fixed << mesh.vertices[i][0] << " " << mesh.vertices[i][1] << " " << mesh.vertices[i][2] << endl;
 	}
@@ -233,7 +178,9 @@ int main(int argc, char** argv){
 
 	out.close();
 
-	outputToObject();
+	if(outputOBJ){
+		outputToObject();
+	}
 
 	return 0;
 }
@@ -251,51 +198,8 @@ int getVertexID(glm::vec3 vertex){
 	return mesh.vertices.size() - 1;
 }
 
-void getSingleCube(int caseNum){
-	// Get the state of the cube
-	glm::vec3 vertexA;
-	glm::vec3 vertexB;
-
-	// Use lookup table to find case
-	int numTriangles = triangleTable[caseNum][0];
-
-	for(int i = 1; i < (numTriangles*3)+1; i++){
-		// Edge to place vertex
-		int edge = triangleTable[caseNum][i];
-
-		// Store the edge vertices
-		for(int j = 0; j < 3; j++){
-			vertexA[j] = vertPos[edgeTable[edge][0]][j];
-			vertexB[j] = vertPos[edgeTable[edge][1]][j];
-		}
-
-		// Get vertex position on the edge using linear interpolation
-		triSoup.push_back((vertexA + vertexB)/float(2.0));
-	}
-
-	triSoup.push_back(glm::vec3(0.000000, 0.000000, 0.010000));
-	triSoup.push_back(glm::vec3(0.000000, 0.010000, 0.000000));
-	triSoup.push_back(glm::vec3(0.010000, 0.000000, 0.000000));
-}
-
-void outputToObject(int num){
-    std::string var = "marchingCases/case" + to_string(num) + ".obj";
-    ofstream out(var);
-	for(size_t i = 0; i < mesh.vertices.size(); i++){
-		out << "v " << std::fixed << mesh.vertices[i][0] << " " << mesh.vertices[i][1] << " " << mesh.vertices[i][2] << endl;
-	}
-	for(size_t i = 0; i < mesh.vertices.size(); i+=3){
-		out << "f " 
-        << mesh.edges[i] + 1 << "//" << " "
-        << mesh.edges[i+1] + 1 << "//" << " "
-        << mesh.edges[i+2] + 1 << "//"
-        << endl;
-	}
-	out.close();
-}
-
 void outputToObject(){
-    std::string var = "marchingCases/out.obj";
+    std::string var = "isosurface.obj";
     ofstream out(var);
 	for(size_t i = 0; i < mesh.vertices.size(); i++){
 		out << "v " << std::fixed << mesh.vertices[i][0] << " " << mesh.vertices[i][1] << " " << mesh.vertices[i][2] << endl;

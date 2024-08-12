@@ -27,6 +27,7 @@ struct indexFaced {
     std::vector<glm::vec3> faces;
 };
 
+// Mesh data structures
 dirEdge mesh;
 indexFaced inputMesh;
 

@@ -82,6 +82,7 @@ int main(int argc, char** argv)
     }
     dField.close();
     
+    // Fill the edge array
     vector<unsigned int> edges(inputMesh.faces.size() * 3);
     #pragma omp parallel for
     for(size_t i = 0; i < inputMesh.faces.size(); i++){
@@ -125,33 +126,85 @@ int main(int argc, char** argv)
         }
     }
 
-    //Test for holes
-    volatile bool hasHoles = false;
+    // Test for holes
+    volatile int holeCount = 0;
     //Check that each edge occurs exactly twice otherwise hole
-    #pragma omp parallel for shared(hasHoles)
+    #pragma omp parallel for shared(holeCount)
     for(size_t edgeID = 0; edgeID < otherhalves.size(); edgeID++){
-        if(hasHoles){
+        if(holeCount){
             continue;
         }
         if(int(edgeID) != otherhalves[otherhalves[edgeID]]){
-            hasHoles = true;
+            holeCount++;
+            //cout << "Hole found: edge " << edgeID << endl;
         }
     }
 
+    // Calculate the average edge length
+    cout << "Calculating average edge" << endl;
+    float edgeLen = 0;
+    for(size_t fID = 0; fID < inputMesh.faces.size(); fID++){
+        edgeLen += glm::length(inputMesh.vertices[inputMesh.faces[fID].x] - inputMesh.vertices[inputMesh.faces[fID].y]);
+        edgeLen += glm::length(inputMesh.vertices[inputMesh.faces[fID].y] - inputMesh.vertices[inputMesh.faces[fID].z]);
+        edgeLen += glm::length(inputMesh.vertices[inputMesh.faces[fID].z] - inputMesh.vertices[inputMesh.faces[fID].x]);
+    }
+    
+    // Size of a grid is the average edge length * 1.5
+    sizeOfGrid = (edgeLen / (inputMesh.faces.size() * 3)) * 1.5;
+    cout << "Size of one grid length is: " << sizeOfGrid << endl;
+
+    // Ask if the user wants to change the grid length
+    string inString;
+    bool inputTaken = false;
+    while(!inputTaken){
+        cout << "Would you like to specify a different grid length? (y/n)";
+        cin >> inString;
+        if(inString == "y" || inString == "Y"){
+            cout << "Please enter a floating point value for the size of a grid length";
+            cin >> sizeOfGrid;
+            inputTaken = true;
+        }
+        else if(inString == "n" || inString == "N"){
+            inputTaken = true;
+        }
+        else{
+            cout << "Please enter a y or n." << endl;
+        }
+    }
+
+    cout << holeCount << " holes detected" << endl;
+
+    // Ask if the user wants to use empty space optimisation
     bool optimise = false;
-    if(hasHoles){
-        cout << "Hole detected, cannot use empty space optimisations" << endl;
-    }else{
+    if(holeCount){
         string input;
         bool inputTaken = false;
         while(!inputTaken){
-            cout << "Empty space optimisation can be used. Would you like to enable? (y / n)";
+            cout << "Empty space optimisation can still be used but may result in holes in the mesh. Would you like to enable? (y / n)";
             cin >> input;
-            if(input == "y"){
+            if(input == "y" || input == "Y"){
                 optimise = true;
                 inputTaken = true;
             }
-            else if(input == "n"){
+            else if(input == "n" || input == "N"){
+                optimise = false;
+                inputTaken = true;
+            }
+            else{
+                cout << "Please enter a y or n." << endl;
+            }
+        }
+    }else{
+        string input;
+        inputTaken = false;
+        while(!inputTaken){
+            cout << "Empty space optimisation can be used. Would you like to enable? (y / n)";
+            cin >> input;
+            if(input == "y" || input == "Y"){
+                optimise = true;
+                inputTaken = true;
+            }
+            else if(input == "n" || input == "N"){
                 optimise = false;
                 inputTaken = true;
             }
@@ -161,8 +214,6 @@ int main(int argc, char** argv)
         }
 
     }
-
-    //cout << optimise << endl;
 
     // TIMER START
     auto start1 = std::chrono::high_resolution_clock::now();
@@ -196,19 +247,7 @@ int main(int argc, char** argv)
         eNormals[fID * 3 + 1] = glm::normalize(fNormals[otherhalves[fID * 3 + 1]/3] + fNormals[fID]);
         // CA edge
         eNormals[fID * 3 + 2] = glm::normalize(fNormals[otherhalves[fID * 3 + 2]/3] + fNormals[fID]);
-    }
-
-    //sizeOfGrid = max((maxPoint[0] - minPoint[0]), max((maxPoint[1] - minPoint[1]),(maxPoint[2] - minPoint[2]))) / GRID_SIZE_MAX;
-    cout << "Calculating average edge" << endl;
-    float edgeLen = 0;
-    for(size_t fID = 0; fID < inputMesh.faces.size(); fID++){
-        edgeLen += glm::length(inputMesh.vertices[inputMesh.faces[fID].x] - inputMesh.vertices[inputMesh.faces[fID].y]);
-        edgeLen += glm::length(inputMesh.vertices[inputMesh.faces[fID].y] - inputMesh.vertices[inputMesh.faces[fID].z]);
-        edgeLen += glm::length(inputMesh.vertices[inputMesh.faces[fID].z] - inputMesh.vertices[inputMesh.faces[fID].x]);
-    }
-    // Size of a grid is the average edge length * 1.5
-    sizeOfGrid = (edgeLen / (inputMesh.faces.size() * 3)) * 1.5;
-    cout << "Size of grid " << sizeOfGrid << endl;
+    }  
 
     //Round the points so the grid fits nicely
     fitToGrid(minPoint, true);
@@ -228,15 +267,11 @@ int main(int argc, char** argv)
     int xBoundingBoxes = (xSize / 8) + (xSize % 8 != 0);
     int yBoundingBoxes = (ySize / 8) + (ySize % 8 != 0);
     int zBoundingBoxes = (zSize / 8) + (zSize % 8 != 0);
-    //cout << "Bounding sizes " << xBoundingBoxes << ", " << yBoundingBoxes << ", " << zBoundingBoxes << endl;
-    //cout << "Scalar Field Size " << xSize << ", " << ySize << ", " << zSize << endl;
-
     float sizeInX = float(maxPoint[0] - minPoint[0]) / float(xBoundingBoxes);
     float sizeInY = float(maxPoint[1] - minPoint[1]) / float(yBoundingBoxes);
     float sizeInZ = float(maxPoint[2] - minPoint[2]) / float(zBoundingBoxes);
-    //cout << "Max point " << minPoint[0] << ", " << minPoint[1] << ", " << minPoint[2] << endl;
-    //cout << "Size of one bounding box " << sizeInX << ", " << sizeInY << ", " << sizeInZ << endl;
 
+    // Assign locations for each bounding box
     boundingBoxNodes.resize(xBoundingBoxes, vector<vector<glm::vec3>>(yBoundingBoxes, vector<glm::vec3>(zBoundingBoxes)));
     #pragma omp parallel for
     for(int x = 0; x < xBoundingBoxes; x++){
@@ -251,7 +286,6 @@ int main(int argc, char** argv)
     // Populate the bounding boxes
     vector<vector<vector<unordered_set<unsigned int>>>> boundingBoxTriangles(xBoundingBoxes, vector<vector<unordered_set<unsigned int>>>(yBoundingBoxes, vector<unordered_set<unsigned int>>(zBoundingBoxes)));
     // For each triangle in the mesh, allocate bounding box(es)
-    #pragma omp parallel for
     for(size_t fID = 0; fID < inputMesh.faces.size(); fID++){
         // For each vertex on the face
         for(int i = 0; i < 3; i++){
@@ -332,7 +366,7 @@ int main(int argc, char** argv)
                         inputMesh.vertices[inputMesh.faces[t].z],      // Vertex C
                         t                          // Face ID
                     );
-
+                    // Check if its a new closest distance
                     if(abs(distance) < abs(closestDistance)){
                         closestDistance = distance;
                     }
@@ -343,11 +377,8 @@ int main(int argc, char** argv)
                     closestDistance = 1000;
                 }
 
-                // If there is no nearby triangles check all triangles in the mesh
-                /*
-                */
+                // If there is no nearby triangles check all triangles in the mesh if optimisation disabled
                 if(closestDistance == 1000 && !optimise){
-                    //cout << "DOIN THIS" << endl;
                     for(size_t faceID = 0; faceID < inputMesh.faces.size(); faceID++){
                         float distance = distanceToTriangle(
                             glm::vec3(x,y,z),               // Point
@@ -356,8 +387,7 @@ int main(int argc, char** argv)
                             inputMesh.vertices[inputMesh.faces[faceID].z],      // Vertex C
                             faceID                          // Face ID
                         );
-                        //cout << "Here" << endl;
-
+                        // Check if its a new closest distance
                         if(abs(distance) < abs(closestDistance)){
                             closestDistance = distance;
                         }
@@ -381,7 +411,7 @@ int main(int argc, char** argv)
     cout << "Time taken: " << float(duration1.count()) / 1000000.0 << " seconds." << endl;
 
     // Dump the scalar field to a .txt file
-    std::ofstream out("scalarField.txt");
+    std::ofstream out("signedDistanceField.txt");
     out << xSize << " " << ySize << " " << zSize << endl;
     for (int x = 0; x < xSize; x++) {
 		for (int y = 0; y < ySize; y++) {
@@ -413,7 +443,7 @@ void fitToGrid(float *point, bool isMin){
         if(point[i] < 0){       // Ensure the co-ordinate stays negative
             point[i] = -(abs(point[i]) + (sizeOfGrid - fmod(abs(point[i]), sizeOfGrid))) + (sign * 2 * sizeOfGrid);
         }  
-        else{                   // Co-ordinate
+        else{                   // Co-ordinate must be positive
             point[i] = point[i] + (sizeOfGrid - fmod(point[i], sizeOfGrid)) + (sign * 2 * sizeOfGrid);
         }
     }
@@ -536,7 +566,6 @@ glm::vec3 getVertexNormal(unsigned int vertexID){
     vector<glm::vec3> triangleNormals;
     // Find the triangles using the vertex
     for(size_t fID = 0; fID < inputMesh.faces.size(); fID++){
-        /**/
         if(inputMesh.faces[fID].x == vertexID){
             // Incident edges are BA CA
             glm::vec3 BA = glm::normalize(inputMesh.vertices[inputMesh.faces[fID].x] - inputMesh.vertices[inputMesh.faces[fID].y]);
@@ -558,32 +587,12 @@ glm::vec3 getVertexNormal(unsigned int vertexID){
             float angle = glm::acos( glm::dot(AC, BC) );
             triangleNormals.push_back(angle * fNormals[fID]);
         } 
-        /*
-        if(inputMesh.faces[fID].x == vertexID || inputMesh.faces[fID].y == vertexID || inputMesh.faces[fID].z == vertexID){
-            triangleNormals.push_back(fNormals[fID]);
-        }
-        */
     }
-    // Average the triangle normals
+    // Sum the triangle normals
     glm::vec3 normal = glm::vec3(0,0,0);
     for(glm::vec3 n: triangleNormals){
         normal = normal + n;
     }
-    //normal = glm::normalize(normal / float(triangleNormals.size()));
 
     return glm::normalize(normal);
-}
-
-glm::vec3 findOtherHalfNormal(unsigned int v0, unsigned int v1){
-    // Look for v1 to v0
-    for(size_t fID = 0; fID < inputMesh.faces.size(); fID++){
-        if((inputMesh.faces[fID].x == v1 && inputMesh.faces[fID].y == v0) || 
-            (inputMesh.faces[fID].y == v1 && inputMesh.faces[fID].z == v0) ||
-            (inputMesh.faces[fID].z == v1 && inputMesh.faces[fID].x == v0)
-        ){
-            cout << fID << endl;
-            return fNormals[fID];
-        }
-    }
-    return glm::vec3(0);
 }

@@ -58,8 +58,8 @@ int main(int argc, char** argv){
         }
         inFile.close();
     }
-    else if(s.find(".obj") != string::npos){
         // Read in the .obj file
+    else if(s.find(".obj") != string::npos){
         ifstream dField(argv[1]);
         if (dField.is_open()){
         
@@ -98,7 +98,6 @@ int main(int argc, char** argv){
                         getline(ssFace, vtn, '/');
                     }
                     inputMesh.faces.push_back(f);
-                    //cout << "Face: " << glm::to_string(faces[11]) << endl;
                 }
             }
         }
@@ -150,6 +149,7 @@ int main(int argc, char** argv){
         return 0;
     }
 
+
     //Test for manifold
     bool isManifold = true;
 
@@ -162,6 +162,7 @@ int main(int argc, char** argv){
     }
     if(!isManifold) return 0;
 
+    
     //Make the dual graph (nodes are faces, edges are shared edges between the faces)
     //Assign empty variables and arrays
     neighbourTriangles.resize(mesh.edges.size() / 3, vector<int>(3, int()));
@@ -215,10 +216,12 @@ int main(int argc, char** argv){
             }
         }
 
+
         //Find all other objects in the mesh
         while(facesFound != faceNum){
             //Next object
             objectNum++;
+
             //Do BFS to find another set of faces
             BFS(unfoundFace);
             
@@ -280,6 +283,7 @@ void BFS(int startingNode)
  
     //Initialise arrays and queue indexes
     dualGraph.resize(mesh.edges.size()/3);
+    dualGraph.clear();
     vector<int> queue;
     queue.resize(mesh.edges.size()/3);
     int currentIndex = 0, endIndex = 0, currentFace = startingNode;

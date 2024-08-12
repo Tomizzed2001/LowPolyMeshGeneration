@@ -4,7 +4,7 @@
 
 using namespace std;
 
-#define DESIRED_TRIANGLE_COUNT 150
+#define DEFAULT_STOPPING_ERROR 5.0
 
 int main(int argc, char** argv){
     // Read in the .diredge file provided
@@ -49,8 +49,39 @@ int main(int argc, char** argv){
     }
     inFile.close();
 
-    outputToObject(0);
-
+    // Get the optional inputs from the user
+    int desiredTriangleCount = 0;
+    float stoppingError = DEFAULT_STOPPING_ERROR;
+    bool answered = false;
+    string answer;
+    while (!answered)
+    {
+        cout << "Would you like to set a desired triangle count? (y/n)";
+        cin >> answer;
+        if(answer == "y" || answer == "Y"){
+            cout << "Enter an integer for the number of triangles.";
+            cin >> desiredTriangleCount;
+            answered = true;
+        }
+        if(answer == "n" || answer == "N"){
+            answered = true;
+        }
+    }
+    answered = false;
+    while (!answered)
+    {
+        cout << "Would you like to set a stopping error? (Default is 5.0) (y/n)";
+        cin >> answer;
+        if(answer == "y" || answer == "Y"){
+            cout << "Enter an floating point number for the stopping error.";
+            cin >> stoppingError;
+            answered = true;
+        }
+        if(answer == "n" || answer == "N"){
+            answered = true;
+        }
+    }
+    
     cout << "Number of triangles: " << mesh.edges.size() / 3 << endl;
     cout << "Number of vertices: " << mesh.vertices.size() / 3 << endl;
 
@@ -89,14 +120,16 @@ int main(int argc, char** argv){
     cout << "Beginning main loop" << endl;
     vector<unsigned int> removedVertices;
     int counter = 1;
-
-    loopin = true;
-
-
+    
     // Complete the collapse in the order of lowest error cost first
-    while((mesh.edges.size() / 3) > DESIRED_TRIANGLE_COUNT && !collapseOrder.empty()){
+    while(!collapseOrder.empty()){
+        // Stop if the triangle count has been met
+        if(int(mesh.edges.size() / 3) <= desiredTriangleCount){
+            cout << "Stopping due to triangle count being met" << endl;
+            break;
+        }
         // Stop if the error is too great
-        if(collapseOrder[0].first > 2.0){
+        if(collapseOrder[0].first > stoppingError && desiredTriangleCount == 0){
             cout << "Stopping due to error cost being too great" << endl;
             break;
         }
@@ -107,9 +140,9 @@ int main(int argc, char** argv){
         // Get the vertices involved
         unsigned int keptVertex = mesh.edges[edge]; 
         unsigned int goneVertex = mesh.edges[otherEdge];
-        //cout << "Kept: " << keptVertex << " Gone: " << goneVertex << endl;
         glm::vec3 newVertexPosition = optimalVertexPosition[collapseOrder[0].second];        
 
+        // Remove the faces, swap the order if the second face is the second to last in the array
         if ((otherEdge / 3) * 3 == mesh.edges.size()-3){
             removeFace(otherEdge / 3, 1);
             removeFace(edge / 3, 2);
@@ -121,20 +154,15 @@ int main(int argc, char** argv){
 
         // Update the one rings
         for(auto vID: oneRings[goneVertex]) {
-            //cout << vID << endl;
             if((oneRings[keptVertex].find(vID) == oneRings[keptVertex].end()) && (vID != keptVertex)){
                 oneRings[keptVertex].insert(vID);
                 oneRings[vID].insert(keptVertex);
-                //oneRings[vID].erase(oneRings[vID].find(goneVertex));
-                //cout << "erased" << endl;
             }
             if(oneRings[vID].find(goneVertex) != oneRings[vID].end()){
                 oneRings[vID].erase(oneRings[vID].find(goneVertex));
-                //cout << "erased" << endl;
             }
         }
         // Remove the old vertex
-        //oneRings[keptVertex].erase(oneRings[keptVertex].find(goneVertex));
 
         vector<int> firstEdge, secondEdge;
 
@@ -200,9 +228,9 @@ int main(int argc, char** argv){
             }
         }
 
-
         updatedEdges.clear();
-
+        
+        // Remove the error costs
         errorCosts.pop_back();
         errorCosts.pop_back();
         errorCosts.pop_back();
@@ -221,13 +249,8 @@ int main(int argc, char** argv){
         // Sort with smallest length first
         sort(collapseOrder.begin(), collapseOrder.end());
 
-        // DEBUG OBJECT FILE
-        /*
-        */
         if(counter % 1000 == 0){
-            //outputToObject(counter);
             cout << counter << " iterations completed." << endl;
-            //start1 = std::chrono::high_resolution_clock::now();
         }
         counter++;
     }
@@ -270,7 +293,6 @@ int main(int argc, char** argv){
 
                 // Calculate the normal
                 glm::vec3 norm = glm::normalize( glm::cross(B-A, C-A) );
-                //cout << "New Normal: " << glm::to_string(norm) << endl;
                 triangleNormals.push_back(norm);
             }
         }
@@ -319,7 +341,6 @@ std::unordered_set<unsigned int> findOneRing(unsigned int vertexID){
     std::unordered_set<unsigned int> oneRing;
 
     // Loop through the mesh.edges finding each triangle the vertex is part of
-    //#pragma omp parallel for
     for(size_t edgeID = 0; edgeID < mesh.edges.size(); edgeID++){
         if(mesh.edges[edgeID] == vertexID){
             // Vertex is A in the triangle
@@ -348,7 +369,6 @@ std::unordered_set<unsigned int> findOneRing(unsigned int vertexID){
 
 void removeFace(unsigned int triangleID, int faceNum){
     int faceID = triangleID * 3;
-    //cout << "FaceID: " << faceID << endl;
     // Check that its not the last triangle in the array
     if (faceID != int(mesh.edges.size()-3)){
         // Swap the faces
@@ -378,7 +398,7 @@ void removeFace(unsigned int triangleID, int faceNum){
         }
 
     }
-    else{
+    else{   // Assign -1 to the removed edges otherhalves
         mesh.otherhalves[mesh.otherhalves[mesh.edges.size()-3]] = -1 * faceNum;
         mesh.otherhalves[mesh.otherhalves[mesh.edges.size()-2]] = -1 * faceNum;
         mesh.otherhalves[mesh.otherhalves[mesh.edges.size()-1]] = -1 * faceNum;
@@ -393,47 +413,13 @@ void removeFace(unsigned int triangleID, int faceNum){
     mesh.otherhalves.pop_back();
 }
 
-void findOtherHalf(unsigned int edgeID){
-    unsigned int v0, v1;
-    if (edgeID % 3 == 2){
-        v0 = mesh.edges[edgeID];
-        v1 = mesh.edges[edgeID-2];
-    }
-    else{
-        v0 = mesh.edges[edgeID];
-        v1 = mesh.edges[edgeID+1];
-    }
-
-    // Look for v1 to v0
-    for(size_t fID = 0; fID < mesh.edges.size(); fID+=3){
-        if(mesh.edges[fID] == v1 && mesh.edges[fID+1] == v0){
-            mesh.otherhalves[edgeID] = fID + 0;
-            break;
-        }
-        else if(mesh.edges[fID+1] == v1 && mesh.edges[fID+2] == v0){
-            mesh.otherhalves[edgeID] = fID + 1;
-            break;
-        }
-        else if(mesh.edges[fID+2] == v1 && mesh.edges[fID] == v0){
-            mesh.otherhalves[edgeID] = fID + 2;
-            break;
-        }
-    }
-
-    mesh.otherhalves[mesh.otherhalves[edgeID]] = edgeID;
-
-    return;
-}
-
 void updateQ(unsigned int vertexID){
-    //cout << "Getting Q for: " << vertexID << endl;
     vector<glm::mat4> allK;
     glm::mat4 Q = glm::mat4(0);
 
     // Find the 1-ring
     for(size_t edgeID = 0; edgeID < mesh.edges.size(); edgeID++){
         if(mesh.edges[edgeID] == vertexID){
-            //cout << "Triangle in one-ring: " << edgeID / 3 << endl;
             // Calculate the triangle ID and return K
             allK.push_back(findK(edgeID / 3));
         }
@@ -450,22 +436,22 @@ void updateQ(unsigned int vertexID){
 }
 
 float getEdgeError(unsigned int edgeID){
-    // cout << edgeID << endl;
     // Check if it is a "valid" collapse
-    //std::unordered_set<unsigned int> aOneRing = findOneRing(mesh.edges[edgeID]);
-    //std::unordered_set<unsigned int> bOneRing = findOneRing(mesh.edges[mesh.otherhalves[edgeID]]);
     int intersectionCount = 0;
-
+    // Count one-ring intersections
     for(auto id: oneRings[mesh.edges[edgeID]]) {
         if(oneRings[mesh.edges[mesh.otherhalves[edgeID]]].find(id) != oneRings[mesh.edges[mesh.otherhalves[edgeID]]].end()){
             intersectionCount++;
         }
     }
+
     // If the one ring of both vertices intersect at more than 2 vertices it is an invalid operation
     if (intersectionCount > 2){
         // Invalid collapse operation
         return -1;
-    } else if ((intersectionCount == 2) && (oneRings[mesh.edges[edgeID]].size() == 3) && (oneRings[mesh.edges[mesh.otherhalves[edgeID]]].size() == 3)) {
+    }
+    // If the object is a tetrahedron it is invalid to collapse 
+    else if ((intersectionCount == 2) && (oneRings[mesh.edges[edgeID]].size() == 3) && (oneRings[mesh.edges[mesh.otherhalves[edgeID]]].size() == 3)) {
         return -1;
     }
 
@@ -482,22 +468,22 @@ float getEdgeError(unsigned int edgeID){
     newMat[3][3] = 1;
 
     glm::vec4 vertexPos;
+    // Check if invertible
     if(glm::determinant(newMat) == 0){
-        //cout << "Not Invertible" << endl;
         // Place on the from vertex
         vertexPos = glm::vec4(mesh.vertices[mesh.edges[edgeID]], 1);
     }
     else{
+        // Optimal vertex position
         vertexPos = glm::inverse(newMat)*glm::vec4(0,0,0,1);
     }
 
+    // Check position does not equal NaN
     if(vertexPos.x != vertexPos.x){
         vertexPos = glm::vec4(mesh.vertices[mesh.edges[edgeID]], 1);
     }
 
-    //vertexPos = glm::vec4(mesh.vertices[mesh.edges[edgeID]], 1);
     optimalVertexPosition[edgeID] = glm::vec3(vertexPos);
-
 
     // Using the new vertex determine if this will cause any triangle flips (self-intersections)
     if(checkForFlip(mesh.edges[mesh.otherhalves[edgeID]] , mesh.edges[edgeID], optimalVertexPosition[edgeID]) == -1
@@ -509,9 +495,9 @@ float getEdgeError(unsigned int edgeID){
 }
 
 void outputToDiredge(){
-    cout << "Dumping to dump.diredge" << endl;
+    cout << "Outputting to lowpoly.diredge" << endl;
     // Write the output to a directed edge file format
-	ofstream out("dump.diredge");
+	ofstream out("lowpoly.diredge");
 	for(size_t i = 0; i < mesh.vertices.size(); i++){
 		out << "v " << std::fixed << mesh.vertices[i][0] << " " << mesh.vertices[i][1] << " " << mesh.vertices[i][2] << endl;
 	}
@@ -529,7 +515,9 @@ void outputToDiredge(){
 }
 
 void outputToObject(){
-    ofstream out("out.obj");
+    cout << "Outputting to lowpoly.obj" << endl;
+    // Write to .obj file
+    ofstream out("lowpoly.obj");
 	for(size_t i = 0; i < mesh.vertices.size(); i++){
 		out << "v " << std::fixed << mesh.vertices[i][0] << " " << mesh.vertices[i][1] << " " << mesh.vertices[i][2] << endl;
 	}
@@ -538,60 +526,12 @@ void outputToObject(){
 	}
 	for(size_t i = 0; i < mesh.edges.size(); i+=3){
 		out << "f " 
-        << mesh.edges[i] + 1 << "//" << " "
-        << mesh.edges[i+1] + 1 << "//" << " "
-        << mesh.edges[i+2] + 1 << "//"
+        << mesh.edges[i] + 1 << "//" << mesh.edges[i] + 1 << " "
+        << mesh.edges[i+1] + 1 << "//" << mesh.edges[i+1] + 1 << " "
+        << mesh.edges[i+2] + 1 << "//" << mesh.edges[i+2] + 1 
         << endl;
 	}
 	out.close();
-}
-
-void outputToObject(int num){
-    std::string var = "outputs/out" + to_string(num) + ".obj";
-    ofstream out(var);
-	for(size_t i = 0; i < mesh.vertices.size(); i++){
-		out << "v " << std::fixed << mesh.vertices[i][0] << " " << mesh.vertices[i][1] << " " << mesh.vertices[i][2] << endl;
-	}
-    for(size_t i = 0; i < mesh.vertexNormals.size(); i++){
-		out << "vn " << std::fixed << mesh.vertexNormals[i][0] << " " << mesh.vertexNormals[i][1] << " " << mesh.vertexNormals[i][2] << endl;
-	}
-	for(size_t i = 0; i < mesh.edges.size(); i+=3){
-		out << "f " 
-        << mesh.edges[i] + 1 << "//" << " "
-        << mesh.edges[i+1] + 1 << "//" << " "
-        << mesh.edges[i+2] + 1 << "//"
-        << endl;
-	}
-	out.close();
-}
-
-float getEdgeLength(unsigned int edgeID){
-    // Check if it is a "valid" collapse
-    std::unordered_set<unsigned int> aOneRing = findOneRing(mesh.edges[edgeID]);
-    std::unordered_set<unsigned int> bOneRing = findOneRing(mesh.edges[mesh.otherhalves[edgeID]]);
-    int intersectionCount = 0;
-    for(auto id: aOneRing) {
-        if(bOneRing.find(id) != bOneRing.end()){
-            intersectionCount++;
-        }
-    }
-    // If the one ring of both vertices intersect at more than 2 vertices it is an invalid operation
-    if (intersectionCount > 2){
-        // Invalid collapse operation
-        return -1;
-    }
-
-    // Get the vertices
-    glm::vec3 A = mesh.vertices[mesh.edges[edgeID]];
-    glm::vec3 B;
-    if(edgeID % 3 == 2){
-        B = mesh.vertices[mesh.edges[edgeID-2]];
-    }
-    else{
-        B = mesh.vertices[mesh.edges[edgeID+1]];
-    }
-
-    return glm::length(B-A);
 }
 
 int checkForFlip(unsigned int goneVertexID, unsigned int keptVertexID, glm::vec3 newVertexPosition){
@@ -627,13 +567,11 @@ int checkForFlip(unsigned int goneVertexID, unsigned int keptVertexID, glm::vec3
                 }
                 if(glm::cross(B-A, C-A) == glm::vec3(0,0,0)){
                     found = true;
-                    //return -1;
                 }
                 glm::vec3 newNorm = glm::normalize(glm::cross(B-A, C-A));
                 // Check if the normal has been flipped
                 if(glm::dot(oldNorm, newNorm) < 0){
                     found = true;
-                    //return -1;
                 }
             }
         }
